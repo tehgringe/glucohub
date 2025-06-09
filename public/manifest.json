@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Meal Logger",
+  "name": "Nightscout Meal Logger",
   "icons": [
     {
       "src": "favicon.ico",

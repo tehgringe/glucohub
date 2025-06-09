@@ -8,6 +8,13 @@
 # testing
 /coverage
 
+# xDrio databases
+/public/export*.sqlite
+/public/onetouchdata.csv
+/public/nightscout_meal_plan_complete_FIXED.csv
+/RULES.md
+
+
 # production
 /build
 
