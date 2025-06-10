@@ -11,14 +11,16 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
   const { config, setConfig } = useNightscout();
   const [url, setUrl] = useState('');
   const [apiSecret, setApiSecret] = useState('');
+  const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     console.log('Settings mounted, config:', config);
     if (config) {
-      setUrl(config.nightscoutUrl);
-      setApiSecret(config.nightscoutApiSecret);
+      setUrl(config.baseUrl);
+      setApiSecret(config.apiSecret);
+      setAccessToken(config.accessToken);
     }
   }, [config]);
 
@@ -40,10 +42,22 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
         throw new Error('API Secret is required');
       }
 
-      console.log('Saving settings:', { url: url.trim(), apiSecret: apiSecret.trim() });
+      // Validate access token
+      if (!accessToken.trim()) {
+        throw new Error('Access Token is required for API v3');
+      }
+
+      console.log('Saving settings:', { 
+        url: url.trim(), 
+        apiSecret: apiSecret.trim(),
+        accessToken: accessToken.trim()
+      });
+      
       setConfig({
-        nightscoutUrl: url.trim(),
-        nightscoutApiSecret: apiSecret.trim()
+        baseUrl: url.trim(),
+        apiSecret: apiSecret.trim(),
+        accessToken: accessToken.trim(),
+        enabled: true
       });
       onSave();
     } catch (err) {
@@ -89,7 +103,7 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
 
                   <div>
                     <label htmlFor="apiSecret" className="block text-sm font-medium text-gray-700">
-                      API Secret
+                      API Secret (for API v1)
                     </label>
                     <input
                       type="password"
@@ -99,26 +113,41 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                       required
                     />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Used for API v1 endpoints. This is your Nightscout API secret.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="accessToken" className="block text-sm font-medium text-gray-700">
+                      Access Token (for API v3)
+                    </label>
+                    <input
+                      type="password"
+                      id="accessToken"
+                      value={accessToken}
+                      onChange={(e) => setAccessToken(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Used for API v3 JWT authentication. This is your Nightscout access token.
+                    </p>
                   </div>
 
                   {error && (
-                    <div className="rounded-md bg-red-50 p-4">
-                      <div className="flex">
-                        <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800">Error</h3>
-                          <div className="mt-2 text-sm text-red-700">{error}</div>
-                        </div>
-                      </div>
-                    </div>
+                    <div className="text-red-600 text-sm">{error}</div>
                   )}
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                  >
-                    {loading ? 'Saving...' : 'Save Settings'}
-                  </button>
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      {loading ? 'Saving...' : 'Save Settings'}
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>

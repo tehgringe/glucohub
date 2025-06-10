@@ -21,24 +21,28 @@ export const NightscoutProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [config, setConfig] = useState<NightscoutConfig | null>(null);
 
   useEffect(() => {
-    const nightscoutUrl = localStorage.getItem('nightscoutUrl');
-    const nightscoutApiSecret = localStorage.getItem('nightscoutApiSecret');
+    const baseUrl = localStorage.getItem('nightscoutBaseUrl');
+    const apiSecret = localStorage.getItem('nightscoutApiSecret');
+    const accessToken = localStorage.getItem('nightscoutAccessToken');
 
-    if (nightscoutUrl && nightscoutApiSecret) {
+    if (baseUrl && apiSecret && accessToken) {
       const newConfig = {
-        nightscoutUrl,
-        nightscoutApiSecret,
+        baseUrl,
+        apiSecret,
+        accessToken,
+        enabled: true
       };
       setConfig(newConfig);
-      setNightscout(new NightscoutClient(newConfig));
+      setNightscout(new NightscoutClient(baseUrl, apiSecret, accessToken));
     }
   }, []);
 
   const handleSetConfig = (newConfig: NightscoutConfig) => {
-    localStorage.setItem('nightscoutUrl', newConfig.nightscoutUrl);
-    localStorage.setItem('nightscoutApiSecret', newConfig.nightscoutApiSecret);
+    localStorage.setItem('nightscoutBaseUrl', newConfig.baseUrl);
+    localStorage.setItem('nightscoutApiSecret', newConfig.apiSecret);
+    localStorage.setItem('nightscoutAccessToken', newConfig.accessToken);
     setConfig(newConfig);
-    setNightscout(new NightscoutClient(newConfig));
+    setNightscout(new NightscoutClient(newConfig.baseUrl, newConfig.apiSecret, newConfig.accessToken));
   };
 
   return (

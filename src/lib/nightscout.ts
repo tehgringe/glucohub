@@ -7,12 +7,14 @@ interface JwtTokenResponse {
 export class NightscoutClient {
   private baseUrl: string;
   private apiSecret: string;
+  private accessToken: string;
   private jwtToken: string | null = null;
   private jwtTokenExpiry: number | null = null;
 
-  constructor(config: NightscoutConfig) {
-    this.baseUrl = config.nightscoutUrl.replace(/\/$/, '');
-    this.apiSecret = config.nightscoutApiSecret;
+  constructor(baseUrl: string, apiSecret: string, accessToken: string) {
+    this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    this.apiSecret = apiSecret;
+    this.accessToken = accessToken;
   }
 
   getBaseUrl(): string {
@@ -29,8 +31,8 @@ export class NightscoutClient {
       return this.jwtToken;
     }
 
-    // Request new JWT token
-    const url = new URL('/api/v2/authorization/request/' + this.apiSecret, this.baseUrl);
+    // Request new JWT token using accessToken
+    const url = new URL('/api/v2/authorization/request/' + this.accessToken, this.baseUrl);
     
     console.log('=== Requesting JWT Token ===');
     console.log('URL:', url.toString());
@@ -72,22 +74,15 @@ export class NightscoutClient {
       ? new URL(endpoint)
       : new URL(endpoint, this.baseUrl);
     
-    // For API v1 endpoints, use token as query parameter
-    if (endpoint.startsWith('/api/v1/')) {
-      url.searchParams.append('token', this.apiSecret);
-    }
-
+    // Get JWT token for all API v3 requests
+    const jwtToken = await this.getJwtToken();
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`,
       ...(options.headers as Record<string, string> || {}),
     };
-
-    // For API v3 endpoints, use JWT token in Authorization header
-    if (endpoint.startsWith('/api/v3/')) {
-      const jwtToken = await this.getJwtToken();
-      headers['Authorization'] = `Bearer ${jwtToken}`;
-    }
 
     // Enhanced request debugging
     console.log('=== Nightscout API Request ===');
@@ -104,36 +99,21 @@ export class NightscoutClient {
     }
     console.log('===========================');
 
-    try {
-      const response = await fetch(url.toString(), {
-        ...options,
-        headers,
-        mode: 'cors'
-      });
+    const response = await fetch(url.toString(), {
+      ...options,
+      headers,
+    });
 
-      // Enhanced response debugging
-      console.log('=== Nightscout API Response ===');
-      console.log('Status:', response.status);
-      console.log('Status Text:', response.statusText);
-      console.log('Headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        console.error('API Error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Error details:', errorText);
-        throw new Error(`Nightscout API error: ${response.statusText} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('Response data:', JSON.stringify(data, null, 2));
-      console.log('===========================');
-      return data;
-    } catch (error) {
+    if (!response.ok) {
+      const errorText = await response.text();
       console.error('=== Nightscout API Error ===');
-      console.error('Error:', error);
+      console.error('Error:', new Error(`Nightscout API error: ${response.status} - ${errorText}`));
       console.error('===========================');
-      throw error;
+      throw new Error(`Nightscout API error: ${response.status} - ${errorText}`);
     }
+
+    const data = await response.json();
+    return data.result || data;
   }
 
   async getFoodEntries(): Promise<FoodEntry[]> {
@@ -162,19 +142,14 @@ export class NightscoutClient {
 
   async getMealEntries(): Promise<Meal[]> {
     try {
-      // Add timestamp to prevent caching
-      const url = new URL(`${this.baseUrl}/api/v1/treatments`);
-      url.searchParams.append('_t', Date.now().toString());
-      
-      console.log('Fetching meals from:', url.toString());
-      const treatments = await this.fetchWithAuth(url.toString());
+      const treatments = await this.fetchWithAuth('/api/v3/treatments?eventType$eq=Meal');
       console.log('Raw treatments:', treatments);
       
       // Filter for meal entries and map to Meal objects
       const meals = treatments
-        .filter((treatment: any) => treatment.eventType === 'Meal' && treatment.carbs !== undefined)
+        .filter((treatment: any) => treatment.carbs !== undefined)
         .map((treatment: any) => ({
-          id: treatment._id,
+          id: treatment.identifier,
           name: treatment.notes || 'Meal',
           carbs: treatment.carbs,
           protein: treatment.protein || 0,
@@ -183,14 +158,14 @@ export class NightscoutClient {
           timestamp: treatment.date / 1000, // Convert from milliseconds to seconds
           synced: true,
           foodItems: treatment.foodItems || [],
-          nightscoutId: treatment._id
+          nightscoutId: treatment.identifier
         }));
       
       console.log('Processed meals:', meals);
       return meals;
     } catch (error) {
       console.error('Error fetching meal entries:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -203,29 +178,27 @@ export class NightscoutClient {
       notes: meal.name,
       date: meal.timestamp * 1000, // Convert to milliseconds
       created_at: new Date().toISOString(),
-      foodItems: meal.foodItems // Include foodItems in the treatment
+      foodItems: meal.foodItems
     };
 
     console.log('Creating treatment:', treatment);
-    const result = await this.fetchWithAuth('/api/v1/treatments', {
+    const result = await this.fetchWithAuth('/api/v3/treatments', {
       method: 'POST',
       body: JSON.stringify(treatment),
     });
 
     console.log('Create meal response:', result);
 
-    // Handle array response
-    const createdTreatment = Array.isArray(result) ? result[0] : result;
-    if (!createdTreatment || !createdTreatment._id) {
+    if (!result || !result.identifier) {
       throw new Error('Failed to create meal: Invalid response from server');
     }
 
     return {
       ...meal,
-      id: createdTreatment._id,
+      id: result.identifier,
       timestamp: meal.timestamp,
       synced: true,
-      nightscoutId: createdTreatment._id
+      nightscoutId: result.identifier
     };
   }
 
@@ -236,11 +209,6 @@ export class NightscoutClient {
 
     console.log('Updating meal:', meal);
     
-    // First delete the existing meal
-    console.log('Deleting existing meal with ID:', meal.nightscoutId);
-    await this.deleteMeal(meal.nightscoutId);
-    
-    // Then create a new meal with the updated data
     const treatment = {
       eventType: 'Meal',
       carbs: meal.carbs,
@@ -251,43 +219,32 @@ export class NightscoutClient {
       foodItems: meal.foodItems
     };
 
-    console.log('Creating new meal with data:', treatment);
-    const result = await this.fetchWithAuth('/api/v1/treatments', {
-      method: 'POST',
+    console.log('Updating meal with data:', treatment);
+    const result = await this.fetchWithAuth(`/api/v3/treatments/${meal.nightscoutId}`, {
+      method: 'PUT',
       body: JSON.stringify(treatment),
     });
 
-    console.log('Create meal response:', result);
+    console.log('Update meal response:', result);
 
-    // Handle array response
-    const createdTreatment = Array.isArray(result) ? result[0] : result;
-    if (!createdTreatment || !createdTreatment._id) {
-      throw new Error('Failed to create meal: Invalid response from server');
+    if (!result || !result.identifier) {
+      throw new Error('Failed to update meal: Invalid response from server');
     }
 
     return {
       ...meal,
-      id: createdTreatment._id,
+      id: result.identifier,
       timestamp: meal.timestamp,
       synced: true,
-      nightscoutId: createdTreatment._id
+      nightscoutId: result.identifier
     };
   }
 
   async deleteMeal(id: string): Promise<void> {
     console.log('Deleting meal with ID:', id);
-    const response = await this.fetchWithAuth(`/api/v1/treatments/${id}`, {
+    await this.fetchWithAuth(`/api/v3/treatments/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
     });
-    console.log('Delete response:', response);
-    
-    if (!response || !response.ok) {
-      throw new Error('Failed to delete meal');
-    }
   }
 
   async syncMeal(meal: Meal): Promise<Meal> {
@@ -298,55 +255,37 @@ export class NightscoutClient {
 
   async getBloodGlucoseReadings(): Promise<BloodGlucoseReading[]> {
     console.log('Fetching manual blood glucose readings...');
-    const timestamp = Date.now();
-    const entries = await this.fetchWithAuth(`/api/v1/entries/mbg?count=1000&find[date][$gte]=0&_=${timestamp}`);
-    console.log('Raw mbg entries from Nightscout:', JSON.stringify(entries, null, 2));
+    const entries = await this.fetchWithAuth('/api/v3/entries?type$eq=mbg');
+    console.log('Raw mbg entries:', entries);
     
-    const mappedEntries = entries.map((entry: any) => {
-      console.log('Processing entry:', JSON.stringify(entry, null, 2));
-      const mapped = {
-        id: entry._id,
-        nightscoutId: entry._id,
-        date: entry.date,
-        mbg: entry.mbg,
-        device: entry.device || 'Manual Entry',
-        type: 'mbg',
-        value: entry.mbg,
-        dateString: entry.dateString,
-        direction: entry.direction,
-        customFields: entry.customFields // Include custom fields in the mapping
-      };
-      console.log('Mapped entry with custom fields:', JSON.stringify(mapped, null, 2));
-      return mapped;
-    });
-
-    console.log('All mapped entries:', JSON.stringify(mappedEntries, null, 2));
-    
-    const sortedEntries = mappedEntries.sort((a: BloodGlucoseReading, b: BloodGlucoseReading) => b.date - a.date);
-    console.log('Final sorted entries:', JSON.stringify(sortedEntries, null, 2));
-    
-    return sortedEntries;
+    return entries.map((entry: any) => ({
+      id: entry.identifier,
+      nightscoutId: entry.identifier,
+      date: entry.date,
+      mbg: entry.mbg,
+      device: entry.device || 'Manual Entry',
+      type: 'mbg',
+      value: entry.mbg,
+      dateString: entry.dateString,
+      direction: entry.direction,
+      customFields: entry.customFields
+    }));
   }
 
   async createBloodGlucoseEntry(reading: Omit<BloodGlucoseReading, 'id'>): Promise<BloodGlucoseReading> {
     console.log('Creating manual blood glucose entry:', reading);
-    
-    // Calculate UTC offset in minutes
-    const utcOffset = new Date().getTimezoneOffset();
     
     const entry = {
       type: 'mbg',
       dateString: new Date(reading.date).toISOString(),
       date: reading.date,
       mbg: reading.mbg,
-      device: 'unknown', // Keep as unknown for Nightscout compatibility
-      utcOffset: utcOffset,
+      device: reading.device || 'Manual Entry',
+      utcOffset: new Date().getTimezoneOffset(),
       sysTime: new Date(reading.date).toISOString(),
-      // Add new fields
       source: 'glucohub',
       device_source: reading.device_source,
       test: reading.test,
-      // Add custom fields
       customFields: {
         source: 'glucohub',
         version: '1.0.0',
@@ -360,57 +299,21 @@ export class NightscoutClient {
     };
 
     console.log('Creating entry with data:', entry);
-    const result = await this.fetchWithAuth('/api/v1/entries', {
+    const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
-      body: JSON.stringify([entry]), // API expects an array
+      body: JSON.stringify(entry),
     });
 
-    console.log('Create mbg response:', JSON.stringify(result, null, 2));
+    console.log('Create mbg response:', result);
 
-    // Handle array response
-    const createdEntry = Array.isArray(result) ? result[0] : result;
-    if (!createdEntry) {
+    if (!result || !result.identifier) {
       throw new Error('Failed to create manual blood glucose entry: Invalid response from server');
-    }
-
-    // Wait a moment for the entry to be processed
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Query for the entry we just created with a cache-busting timestamp
-    const timestamp = Date.now();
-    const entries = await this.fetchWithAuth(`/api/v1/entries/mbg?count=10&find[date][$gte]=${reading.date - 1000}&find[date][$lte]=${reading.date + 1000}&_=${timestamp}`);
-    console.log('Verification query results:', JSON.stringify(entries, null, 2));
-
-    // Find the entry by matching the date and mbg value
-    const savedEntry = entries.find((e: any) => {
-      const match = Math.abs(e.date - reading.date) < 1000 && e.mbg === reading.mbg;
-      console.log('Comparing entry:', {
-        entry: e,
-        reading,
-        match,
-        entryDate: new Date(e.date).toISOString(),
-        readingDate: new Date(reading.date).toISOString(),
-        dateDiff: Math.abs(e.date - reading.date)
-      });
-      return match;
-    });
-
-    if (!savedEntry) {
-      console.error('Could not find created entry in verification query');
-      console.error('Created entry:', entry);
-      console.error('Verification results:', entries);
-      // Instead of throwing an error, return the created entry
-      return {
-        ...reading,
-        id: createdEntry._id || 'temp-' + Date.now(),
-        nightscoutId: createdEntry._id || 'temp-' + Date.now()
-      };
     }
 
     return {
       ...reading,
-      id: savedEntry._id,
-      nightscoutId: savedEntry._id
+      id: result.identifier,
+      nightscoutId: result.identifier
     };
   }
 
@@ -435,7 +338,7 @@ export class NightscoutClient {
     };
 
     console.log('Creating new entry with data:', entry);
-    const result = await this.fetchWithAuth('/api/v1/entries', {
+    const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
       body: JSON.stringify([entry]), // API expects an array
     });
@@ -444,55 +347,45 @@ export class NightscoutClient {
 
     // Handle array response
     const createdEntry = Array.isArray(result) ? result[0] : result;
-    if (!createdEntry || !createdEntry._id) {
+    if (!createdEntry || !createdEntry.identifier) {
       throw new Error('Failed to create manual blood glucose entry: Invalid response from server');
     }
 
     return {
       ...reading,
-      id: createdEntry._id,
-      nightscoutId: createdEntry._id
+      id: createdEntry.identifier,
+      nightscoutId: createdEntry.identifier
     };
   }
 
   async deleteBloodGlucoseEntry(id: string): Promise<void> {
     console.log('Deleting blood glucose entry with ID:', id);
-    const response = await this.fetchWithAuth(`/api/v1/entries/${id}`, {
+    await this.fetchWithAuth(`/api/v3/entries/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
     });
-    console.log('Delete response:', response);
-    
-    if (!response || !response.ok) {
-      throw new Error('Failed to delete blood glucose entry');
-    }
   }
 
   async getSensorGlucoseReadings(): Promise<BloodGlucoseReading[]> {
     console.log('Fetching sensor glucose readings...');
-    const entries = await this.fetchWithAuth('/api/v1/entries/sgv?count=1000');
+    const entries = await this.fetchWithAuth('/api/v3/entries?type$eq=sgv');
     console.log('Raw sgv entries:', entries);
     
     return entries.map((entry: any) => ({
-      id: entry._id,
-      nightscoutId: entry._id,
+      id: entry.identifier,
+      nightscoutId: entry.identifier,
       date: entry.date,
       sgv: entry.sgv,
       device: entry.device || 'CGM',
       type: 'sgv',
       value: entry.sgv,
-      dateString: entry.dateString
+      dateString: entry.dateString,
+      direction: entry.direction,
+      customFields: entry.customFields
     }));
   }
 
   async createSensorGlucoseEntry(reading: Omit<BloodGlucoseReading, 'id'>): Promise<BloodGlucoseReading> {
     console.log('Creating sensor glucose entry:', reading);
-    
-    // Calculate UTC offset in minutes
-    const utcOffset = new Date().getTimezoneOffset();
     
     const entry = {
       type: 'sgv',
@@ -500,14 +393,12 @@ export class NightscoutClient {
       date: reading.date,
       sgv: reading.sgv,
       device: reading.device || 'CGM',
-      utcOffset: utcOffset,
+      utcOffset: new Date().getTimezoneOffset(),
       sysTime: new Date(reading.date).toISOString(),
       direction: reading.direction,
-      // Add new fields
       source: 'glucohub',
       device_source: reading.device_source,
       test: reading.test,
-      // Add custom fields
       customFields: {
         source: 'glucohub',
         version: '1.0.0',
@@ -521,57 +412,21 @@ export class NightscoutClient {
     };
 
     console.log('Creating entry with data:', entry);
-    const result = await this.fetchWithAuth('/api/v1/entries', {
+    const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
-      body: JSON.stringify([entry]), // API expects an array
+      body: JSON.stringify(entry),
     });
 
-    console.log('Create sgv response:', JSON.stringify(result, null, 2));
+    console.log('Create sgv response:', result);
 
-    // Handle array response
-    const createdEntry = Array.isArray(result) ? result[0] : result;
-    if (!createdEntry) {
+    if (!result || !result.identifier) {
       throw new Error('Failed to create sensor glucose entry: Invalid response from server');
-    }
-
-    // Wait a moment for the entry to be processed
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Query for the entry we just created with a cache-busting timestamp
-    const timestamp = Date.now();
-    const entries = await this.fetchWithAuth(`/api/v1/entries/sgv?count=10&find[date][$gte]=${reading.date - 1000}&find[date][$lte]=${reading.date + 1000}&_=${timestamp}`);
-    console.log('Verification query results:', JSON.stringify(entries, null, 2));
-
-    // Find the entry by matching the date and sgv value
-    const savedEntry = entries.find((e: any) => {
-      const match = Math.abs(e.date - reading.date) < 1000 && e.sgv === reading.sgv;
-      console.log('Comparing entry:', {
-        entry: e,
-        reading,
-        match,
-        entryDate: new Date(e.date).toISOString(),
-        readingDate: new Date(reading.date).toISOString(),
-        dateDiff: Math.abs(e.date - reading.date)
-      });
-      return match;
-    });
-
-    if (!savedEntry) {
-      console.error('Could not find created entry in verification query');
-      console.error('Created entry:', entry);
-      console.error('Verification results:', entries);
-      // Instead of throwing an error, return the created entry
-      return {
-        ...reading,
-        id: createdEntry._id || 'temp-' + Date.now(),
-        nightscoutId: createdEntry._id || 'temp-' + Date.now()
-      };
     }
 
     return {
       ...reading,
-      id: savedEntry._id,
-      nightscoutId: savedEntry._id
+      id: result.identifier,
+      nightscoutId: result.identifier
     };
   }
 
@@ -596,7 +451,7 @@ export class NightscoutClient {
     };
 
     console.log('Creating new entry with data:', entry);
-    const result = await this.fetchWithAuth('/api/v1/entries', {
+    const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
       body: JSON.stringify([entry]), // API expects an array
     });
@@ -605,31 +460,22 @@ export class NightscoutClient {
 
     // Handle array response
     const createdEntry = Array.isArray(result) ? result[0] : result;
-    if (!createdEntry || !createdEntry._id) {
+    if (!createdEntry || !createdEntry.identifier) {
       throw new Error('Failed to create sensor glucose entry: Invalid response from server');
     }
 
     return {
       ...reading,
-      id: createdEntry._id,
-      nightscoutId: createdEntry._id
+      id: createdEntry.identifier,
+      nightscoutId: createdEntry.identifier
     };
   }
 
   async deleteSensorGlucoseEntry(id: string): Promise<void> {
     console.log('Deleting sensor glucose entry with ID:', id);
-    const response = await this.fetchWithAuth(`/api/v1/entries/${id}`, {
+    await this.fetchWithAuth(`/api/v3/entries/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
     });
-    console.log('Delete response:', response);
-    
-    if (!response || !response.ok) {
-      throw new Error('Failed to delete sensor glucose entry');
-    }
   }
 
   async uploadEntries(entries: any[]): Promise<void> {
@@ -654,36 +500,26 @@ export class NightscoutClient {
 
   async getBloodGlucoseReadingsInRange(startDate: number, endDate: number): Promise<BloodGlucoseReading[]> {
     console.log('Fetching manual blood glucose readings in range...');
-    const timestamp = Date.now();
+    const startDateStr = new Date(startDate).toISOString().split('T')[0];
+    const endDateStr = new Date(endDate).toISOString().split('T')[0];
+    
     const entries = await this.fetchWithAuth(
-      `/api/v1/entries/mbg?count=1000&find[date][$gte]=${startDate}&find[date][$lte]=${endDate}&_=${timestamp}`
+      `/api/v3/entries?type$eq=mbg&dateString$re=^${startDateStr}|^${endDateStr}`
     );
-    console.log('Raw mbg entries from Nightscout:', JSON.stringify(entries, null, 2));
+    console.log('Raw mbg entries:', entries);
     
-    const mappedEntries = entries.map((entry: any) => {
-      console.log('Processing entry:', JSON.stringify(entry, null, 2));
-      const mapped = {
-        id: entry._id,
-        nightscoutId: entry._id,
-        date: entry.date,
-        mbg: entry.mbg,
-        device: entry.device || 'Manual Entry',
-        type: 'mbg',
-        value: entry.mbg,
-        dateString: entry.dateString,
-        direction: entry.direction,
-        customFields: entry.customFields
-      };
-      console.log('Mapped entry with custom fields:', JSON.stringify(mapped, null, 2));
-      return mapped;
-    });
-
-    console.log('All mapped entries:', JSON.stringify(mappedEntries, null, 2));
-    
-    const sortedEntries = mappedEntries.sort((a: BloodGlucoseReading, b: BloodGlucoseReading) => b.date - a.date);
-    console.log('Final sorted entries:', JSON.stringify(sortedEntries, null, 2));
-    
-    return sortedEntries;
+    return entries.map((entry: any) => ({
+      id: entry.identifier,
+      nightscoutId: entry.identifier,
+      date: entry.date,
+      mbg: entry.mbg,
+      device: entry.device || 'Manual Entry',
+      type: 'mbg',
+      value: entry.mbg,
+      dateString: entry.dateString,
+      direction: entry.direction,
+      customFields: entry.customFields
+    }));
   }
 
   async verifyEntryExists(reading: BloodGlucoseReading): Promise<boolean> {
@@ -691,7 +527,7 @@ export class NightscoutClient {
     const timestamp = Date.now();
     // Query for entries within a 1-second window of the reading's date
     const entries = await this.fetchWithAuth(
-      `/api/v1/entries/mbg?count=10&find[date][$gte]=${reading.date - 1000}&find[date][$lte]=${reading.date + 1000}&_=${timestamp}`
+      `/api/v3/entries?type$eq=mbg&dateString$re=^${new Date(reading.date).toISOString().split('T')[0]}|^${new Date(reading.date).toISOString().split('T')[0]}`
     );
     
     // Check if any entry matches the reading's date and value
@@ -705,15 +541,17 @@ export class NightscoutClient {
 
   async getSensorGlucoseReadingsInRange(startDate: number, endDate: number): Promise<BloodGlucoseReading[]> {
     console.log('Fetching sensor glucose readings in range...');
-    const timestamp = Date.now();
-    const entries = await this.fetchWithAuth(
-      `/api/v1/entries/sgv?count=1000&find[date][$gte]=${startDate}&find[date][$lte]=${endDate}&_=${timestamp}`
-    );
-    console.log('Raw sgv entries from Nightscout:', JSON.stringify(entries, null, 2));
+    const startDateStr = new Date(startDate).toISOString().split('T')[0];
+    const endDateStr = new Date(endDate).toISOString().split('T')[0];
     
-    const mappedEntries = entries.map((entry: any) => ({
-      id: entry._id,
-      nightscoutId: entry._id,
+    const entries = await this.fetchWithAuth(
+      `/api/v3/entries?type$eq=sgv&dateString$re=^${startDateStr}|^${endDateStr}`
+    );
+    console.log('Raw sgv entries:', entries);
+    
+    return entries.map((entry: any) => ({
+      id: entry.identifier,
+      nightscoutId: entry.identifier,
       date: entry.date,
       sgv: entry.sgv,
       device: entry.device || 'CGM',
@@ -723,28 +561,23 @@ export class NightscoutClient {
       direction: entry.direction,
       customFields: entry.customFields
     }));
-
-    console.log('All mapped entries:', JSON.stringify(mappedEntries, null, 2));
-    
-    const sortedEntries = mappedEntries.sort((a: BloodGlucoseReading, b: BloodGlucoseReading) => b.date - a.date);
-    console.log('Final sorted entries:', JSON.stringify(sortedEntries, null, 2));
-    
-    return sortedEntries;
   }
 
   async getMealEntriesInRange(startDate: number, endDate: number): Promise<Meal[]> {
     console.log('Fetching meals in range...');
-    const timestamp = Date.now();
+    const startDateStr = new Date(startDate).toISOString().split('T')[0];
+    const endDateStr = new Date(endDate).toISOString().split('T')[0];
+    
     const treatments = await this.fetchWithAuth(
-      `/api/v1/treatments?find[date][$gte]=${startDate}&find[date][$lte]=${endDate}&_=${timestamp}`
+      `/api/v3/treatments?eventType$eq=Meal&created_at$re=^${startDateStr}|^${endDateStr}`
     );
     console.log('Raw treatments:', treatments);
     
     // Filter for meal entries and map to Meal objects
     const meals = treatments
-      .filter((treatment: any) => treatment.eventType === 'Meal' && treatment.carbs !== undefined)
+      .filter((treatment: any) => treatment.carbs !== undefined)
       .map((treatment: any) => ({
-        id: treatment._id,
+        id: treatment.identifier,
         name: treatment.notes || 'Meal',
         carbs: treatment.carbs,
         protein: treatment.protein || 0,
@@ -753,7 +586,7 @@ export class NightscoutClient {
         timestamp: treatment.date / 1000, // Convert from milliseconds to seconds
         synced: true,
         foodItems: treatment.foodItems || [],
-        nightscoutId: treatment._id
+        nightscoutId: treatment.identifier
       }));
     
     console.log('Processed meals:', meals);

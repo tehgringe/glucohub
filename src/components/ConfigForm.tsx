@@ -8,8 +8,10 @@ export const ConfigForm: React.FC = () => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const newConfig = {
-      nightscoutUrl: formData.get('url') as string,
-      nightscoutApiSecret: formData.get('token') as string,
+      baseUrl: formData.get('url') as string,
+      apiSecret: formData.get('apiSecret') as string,
+      accessToken: formData.get('accessToken') as string,
+      enabled: true
     };
     setConfig(newConfig);
   };
@@ -33,21 +35,43 @@ export const ConfigForm: React.FC = () => {
                 id="url"
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="https://your-nightscout.herokuapp.com"
-                defaultValue={config?.nightscoutUrl}
+                defaultValue={config?.baseUrl}
+                required
               />
             </div>
             <div>
-              <label htmlFor="token" className="block text-sm font-medium text-gray-700">
-                API Token
+              <label htmlFor="apiSecret" className="block text-sm font-medium text-gray-700">
+                API Secret (for API v1)
               </label>
               <input
                 type="password"
-                name="token"
-                id="token"
+                name="apiSecret"
+                id="apiSecret"
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Your API token"
-                defaultValue={config?.nightscoutApiSecret}
+                placeholder="Your API secret"
+                defaultValue={config?.apiSecret}
+                required
               />
+              <p className="mt-1 text-sm text-gray-500">
+                Used for API v1 endpoints. This is your Nightscout API secret.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="accessToken" className="block text-sm font-medium text-gray-700">
+                Access Token (for API v3)
+              </label>
+              <input
+                type="password"
+                name="accessToken"
+                id="accessToken"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Your access token"
+                defaultValue={config?.accessToken}
+                required
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                Used for API v3 JWT authentication. This is your Nightscout access token.
+              </p>
             </div>
           </div>
           <div className="mt-5">

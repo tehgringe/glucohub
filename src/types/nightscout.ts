@@ -49,6 +49,8 @@ export interface BloodGlucoseReading {
 }
 
 export interface NightscoutConfig {
-  nightscoutUrl: string;
-  nightscoutApiSecret: string;
+  baseUrl: string;
+  apiSecret: string;
+  accessToken: string;
+  enabled: boolean;
 } 
