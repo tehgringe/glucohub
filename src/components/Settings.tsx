@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNightscout } from '../contexts/NightscoutContext';
+import { NightscoutConfig } from '../types/nightscout';
 
 interface SettingsProps {
   onSave: () => void;
@@ -12,8 +13,14 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
   const [url, setUrl] = useState('');
   const [apiSecret, setApiSecret] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [useBrowserTimezone, setUseBrowserTimezone] = useState(true);
+  const [manualTimezone, setManualTimezone] = useState('');
+  const [manualOffset, setManualOffset] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Get list of common timezones
+  const timezones = Intl.supportedValuesOf('timeZone').sort();
 
   useEffect(() => {
     console.log('Settings mounted, config:', config);
@@ -21,6 +28,11 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
       setUrl(config.baseUrl);
       setApiSecret(config.apiSecret);
       setAccessToken(config.accessToken);
+      if (config.timezone) {
+        setUseBrowserTimezone(config.timezone.useBrowserTimezone);
+        setManualTimezone(config.timezone.name || '');
+        setManualOffset(config.timezone.manualOffset?.toString() || '');
+      }
     }
   }, [config]);
 
@@ -47,17 +59,42 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
         throw new Error('Access Token is required for API v3');
       }
 
+      // Validate timezone settings
+      let timezoneConfig: NightscoutConfig['timezone'] | undefined;
+      if (!useBrowserTimezone) {
+        if (!manualTimezone) {
+          throw new Error('Please select a timezone');
+        }
+        const offset = parseInt(manualOffset);
+        if (isNaN(offset)) {
+          throw new Error('Invalid timezone offset');
+        }
+        timezoneConfig = {
+          name: manualTimezone,
+          useBrowserTimezone: false,
+          manualOffset: offset
+        };
+      } else {
+        // Use browser timezone
+        timezoneConfig = {
+          name: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          useBrowserTimezone: true
+        };
+      }
+
       console.log('Saving settings:', { 
         url: url.trim(), 
         apiSecret: apiSecret.trim(),
-        accessToken: accessToken.trim()
+        accessToken: accessToken.trim(),
+        timezone: timezoneConfig
       });
       
       setConfig({
         baseUrl: url.trim(),
         apiSecret: apiSecret.trim(),
         accessToken: accessToken.trim(),
-        enabled: true
+        enabled: true,
+        timezone: timezoneConfig
       });
       onSave();
     } catch (err) {
@@ -133,6 +170,71 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
                     <p className="mt-1 text-sm text-gray-500">
                       Used for API v3 JWT authentication. This is your Nightscout access token.
                     </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-gray-900">Timezone Settings</h3>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="useBrowserTimezone"
+                        checked={useBrowserTimezone}
+                        onChange={(e) => setUseBrowserTimezone(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="useBrowserTimezone" className="ml-2 block text-sm text-gray-900">
+                        Use browser timezone
+                      </label>
+                    </div>
+
+                    {!useBrowserTimezone && (
+                      <div className="space-y-4">
+                        <div>
+                          <label htmlFor="manualTimezone" className="block text-sm font-medium text-gray-700">
+                            Timezone
+                          </label>
+                          <select
+                            id="manualTimezone"
+                            value={manualTimezone}
+                            onChange={(e) => setManualTimezone(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            required
+                          >
+                            <option value="">Select a timezone</option>
+                            {timezones.map((tz) => (
+                              <option key={tz} value={tz}>
+                                {tz}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="manualOffset" className="block text-sm font-medium text-gray-700">
+                            Manual Offset (minutes)
+                          </label>
+                          <input
+                            type="number"
+                            id="manualOffset"
+                            value={manualOffset}
+                            onChange={(e) => setManualOffset(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            placeholder="e.g., 240 for UTC+4"
+                            required
+                          />
+                          <p className="mt-1 text-sm text-gray-500">
+                            Enter the offset in minutes from UTC (e.g., 240 for UTC+4)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {useBrowserTimezone && (
+                      <div className="text-sm text-gray-500">
+                        Current browser timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                      </div>
+                    )}
                   </div>
 
                   {error && (

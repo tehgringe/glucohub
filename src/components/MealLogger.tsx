@@ -197,7 +197,7 @@ export const MealLogger: React.FC = () => {
         protein: food.protein || 0,
         fat: food.fat || 0,
         notes: food.notes || '',
-        foodItems: [food],
+        foodItems: [food.id],
         synced: false,
         timestamp: timestamp || Math.floor(Date.now() / 1000),
       };
@@ -249,11 +249,11 @@ export const MealLogger: React.FC = () => {
         {showFoodEntries && (
           <div key="food-entries-section" className="mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Food Entries</h3>
+              <h3 className="text-lg font-semibold">Meal Plans</h3>
               <div className="w-64">
                 <input
                   type="text"
-                  placeholder="Search meals..."
+                  placeholder="Search meal plans..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -272,7 +272,11 @@ export const MealLogger: React.FC = () => {
                     Carbs: {food.carbs}g | Protein: {food.protein}g | Fat: {food.fat}g
                   </p>
                   {food.notes && (
-                    <p className="text-sm text-gray-500 mt-2">{food.notes}</p>
+                    <div className="text-sm text-gray-500 mt-2">
+                      {food.notes.split(', ').map((note, i) => (
+                        <div key={i} className="text-xs">{note}</div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}

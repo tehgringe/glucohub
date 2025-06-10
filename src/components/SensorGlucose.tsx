@@ -18,12 +18,10 @@ export const SensorGlucose: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Loading sensor glucose readings...');
+      // All debug logging suppressed as per request
       const data = await nightscout.getSensorGlucoseReadings();
-      console.log('Received readings:', data);
       setReadings(data);
     } catch (err) {
-      console.error('Error loading readings:', err);
       setError(err instanceof Error ? err.message : 'Failed to load readings');
     } finally {
       setLoading(false);
@@ -35,7 +33,6 @@ export const SensorGlucose: React.FC = () => {
   }, [loadReadings]);
 
   const handleEntryCreated = useCallback(() => {
-    console.log('Entry created, refreshing readings...');
     loadReadings();
   }, [loadReadings]);
 

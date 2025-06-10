@@ -1,4 +1,5 @@
 import { FoodEntry, Meal, BloodGlucoseReading, NightscoutConfig } from '../types/nightscout';
+import { getLocalDateString } from './dateUtils';
 
 interface JwtTokenResponse {
   token: string;
@@ -34,8 +35,9 @@ export class NightscoutClient {
     // Request new JWT token using accessToken
     const url = new URL('/api/v2/authorization/request/' + this.accessToken, this.baseUrl);
     
-    console.log('=== Requesting JWT Token ===');
-    console.log('URL:', url.toString());
+    // All debug logging suppressed as per request
+    // console.log('=== Requesting JWT Token ===');
+    // console.log('URL:', url.toString());
     
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -46,11 +48,11 @@ export class NightscoutClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('JWT token request failed:', {
-        status: response.status,
-        statusText: response.statusText,
-        response: errorText
-      });
+      // console.error('JWT token request failed:', {
+      //   status: response.status,
+      //   statusText: response.statusText,
+      //   response: errorText
+      // });
       throw new Error(`Failed to get JWT token: ${response.status} ${response.statusText}`);
     }
 
@@ -63,8 +65,9 @@ export class NightscoutClient {
     // Set token expiry to 50 minutes (giving 10-minute buffer before 1-hour expiry)
     this.jwtTokenExpiry = Date.now() + (50 * 60 * 1000);
     
-    console.log('=== JWT Token Received ===');
-    console.log('Token expiry:', new Date(this.jwtTokenExpiry).toISOString());
+    // All debug logging suppressed as per request
+    // console.log('=== JWT Token Received ===');
+    // console.log('Token expiry:', new Date(this.jwtTokenExpiry).toISOString());
     
     return this.jwtToken;
   }
@@ -85,19 +88,23 @@ export class NightscoutClient {
     };
 
     // Enhanced request debugging
-    console.log('=== Nightscout API Request ===');
-    console.log('Endpoint:', url.toString());
-    console.log('Method:', options.method || 'GET');
-    console.log('Headers:', headers);
+    // All debug logging suppressed as per request
+    // console.log('=== Nightscout API Request ===');
+    // console.log('Endpoint:', url.toString());
+    // console.log('Method:', options.method || 'GET');
+    // console.log('Headers:', headers);
     if (options.body) {
       try {
         const bodyObj = JSON.parse(options.body as string);
-        console.log('Request body:', JSON.stringify(bodyObj, null, 2));
+        // All debug logging suppressed as per request
+        // console.log('Request body:', JSON.stringify(bodyObj, null, 2));
       } catch (e) {
-        console.log('Request body:', options.body);
+        // All debug logging suppressed as per request
+        // console.log('Request body:', options.body);
       }
     }
-    console.log('===========================');
+    // All debug logging suppressed as per request
+    // console.log('===========================');
 
     const response = await fetch(url.toString(), {
       ...options,
@@ -106,9 +113,10 @@ export class NightscoutClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('=== Nightscout API Error ===');
-      console.error('Error:', new Error(`Nightscout API error: ${response.status} - ${errorText}`));
-      console.error('===========================');
+      // All debug logging suppressed as per request
+      // console.error('=== Nightscout API Error ===');
+      // console.error('Error:', new Error(`Nightscout API error: ${response.status} - ${errorText}`));
+      // console.error('===========================');
       throw new Error(`Nightscout API error: ${response.status} - ${errorText}`);
     }
 
@@ -117,14 +125,50 @@ export class NightscoutClient {
   }
 
   async getFoodEntries(): Promise<FoodEntry[]> {
-    return this.fetchWithAuth('/api/v1/food');
+    // All debug logging suppressed as per request
+    // console.log('Fetching food entries...');
+    const response = await this.fetchWithAuth('/api/v3/food');
+    
+    // The response is already parsed JSON from fetchWithAuth
+    if (!response || !Array.isArray(response)) {
+      throw new Error('Invalid response from server');
+    }
+    
+    return response.map((food: any) => ({
+      id: food.identifier,
+      name: food.name,
+      carbs: food.carbs,
+      protein: food.protein || 0,
+      fat: food.fat || 0,
+      notes: food.notes
+    }));
   }
 
   async createFoodEntry(food: Omit<FoodEntry, 'id'>): Promise<FoodEntry> {
-    return this.fetchWithAuth('/api/v1/food', {
+    const response = await this.fetchWithAuth('/api/v3/food', {
       method: 'POST',
-      body: JSON.stringify(food),
+      body: JSON.stringify({
+        name: food.name,
+        carbs: food.carbs,
+        protein: food.protein,
+        fat: food.fat,
+        notes: food.notes,
+        type: 'food'
+      })
     });
+
+    if (!response || !response.identifier) {
+      throw new Error('Failed to create food entry: Invalid response from server');
+    }
+
+    return {
+      id: response.identifier,
+      name: response.name,
+      carbs: response.carbs,
+      protein: response.protein || 0,
+      fat: response.fat || 0,
+      notes: response.notes
+    };
   }
 
   async updateFoodEntry(id: string, food: Partial<FoodEntry>): Promise<void> {
@@ -135,7 +179,9 @@ export class NightscoutClient {
   }
 
   async deleteFoodEntry(id: string): Promise<void> {
-    await this.fetchWithAuth(`/api/v1/food/${id}`, {
+    // All debug logging suppressed as per request
+    // console.log('Deleting food entry with ID:', id);
+    await this.fetchWithAuth(`/api/v3/treatments/${id}`, {
       method: 'DELETE',
     });
   }
@@ -143,7 +189,8 @@ export class NightscoutClient {
   async getMealEntries(): Promise<Meal[]> {
     try {
       const treatments = await this.fetchWithAuth('/api/v3/treatments?eventType$eq=Meal');
-      console.log('Raw treatments:', treatments);
+      // All debug logging suppressed as per request
+      // console.log('Raw treatments:', treatments);
       
       // Filter for meal entries and map to Meal objects
       const meals = treatments
@@ -161,10 +208,12 @@ export class NightscoutClient {
           nightscoutId: treatment.identifier
         }));
       
-      console.log('Processed meals:', meals);
+      // All debug logging suppressed as per request
+      // console.log('Processed meals:', meals);
       return meals;
     } catch (error) {
-      console.error('Error fetching meal entries:', error);
+      // All debug logging suppressed as per request
+      // console.error('Error fetching meal entries:', error);
       throw error;
     }
   }
@@ -178,16 +227,21 @@ export class NightscoutClient {
       notes: meal.name,
       date: meal.timestamp * 1000, // Convert to milliseconds
       created_at: new Date().toISOString(),
-      foodItems: meal.foodItems
+      foodItems: meal.foodItems,
+      app: 'glucohub', // Required field for API v3
+      device: 'glucohub', // Add device field for better tracking
+      source: 'glucohub' // Add source field for better tracking
     };
 
-    console.log('Creating treatment:', treatment);
+    // All debug logging suppressed as per request
+    // console.log('Creating treatment:', treatment);
     const result = await this.fetchWithAuth('/api/v3/treatments', {
       method: 'POST',
       body: JSON.stringify(treatment),
     });
 
-    console.log('Create meal response:', result);
+    // All debug logging suppressed as per request
+    // console.log('Create meal response:', result);
 
     if (!result || !result.identifier) {
       throw new Error('Failed to create meal: Invalid response from server');
@@ -207,7 +261,8 @@ export class NightscoutClient {
       throw new Error('Cannot update meal: Missing Nightscout ID');
     }
 
-    console.log('Updating meal:', meal);
+    // All debug logging suppressed as per request
+    // console.log('Updating meal:', meal);
     
     const treatment = {
       eventType: 'Meal',
@@ -216,16 +271,21 @@ export class NightscoutClient {
       fat: meal.fat,
       notes: meal.name,
       date: meal.timestamp * 1000, // Convert to milliseconds
-      foodItems: meal.foodItems
+      foodItems: meal.foodItems,
+      app: 'glucohub', // Required field for API v3
+      device: 'glucohub', // Add device field for better tracking
+      source: 'glucohub' // Add source field for better tracking
     };
 
-    console.log('Updating meal with data:', treatment);
+    // All debug logging suppressed as per request
+    // console.log('Updating meal with data:', treatment);
     const result = await this.fetchWithAuth(`/api/v3/treatments/${meal.nightscoutId}`, {
       method: 'PUT',
       body: JSON.stringify(treatment),
     });
 
-    console.log('Update meal response:', result);
+    // All debug logging suppressed as per request
+    // console.log('Update meal response:', result);
 
     if (!result || !result.identifier) {
       throw new Error('Failed to update meal: Invalid response from server');
@@ -241,7 +301,8 @@ export class NightscoutClient {
   }
 
   async deleteMeal(id: string): Promise<void> {
-    console.log('Deleting meal with ID:', id);
+    // All debug logging suppressed as per request
+    // console.log('Deleting meal with ID:', id);
     await this.fetchWithAuth(`/api/v3/treatments/${id}`, {
       method: 'DELETE',
     });
@@ -254,9 +315,11 @@ export class NightscoutClient {
   }
 
   async getBloodGlucoseReadings(): Promise<BloodGlucoseReading[]> {
-    console.log('Fetching manual blood glucose readings...');
+    // All debug logging suppressed as per request
+    // console.log('Fetching manual blood glucose readings...');
     const entries = await this.fetchWithAuth('/api/v3/entries?type$eq=mbg');
-    console.log('Raw mbg entries:', entries);
+    // All debug logging suppressed as per request
+    // console.log('Raw mbg entries:', entries);
     
     return entries.map((entry: any) => ({
       id: entry.identifier,
@@ -273,7 +336,8 @@ export class NightscoutClient {
   }
 
   async createBloodGlucoseEntry(reading: Omit<BloodGlucoseReading, 'id'>): Promise<BloodGlucoseReading> {
-    console.log('Creating manual blood glucose entry:', reading);
+    // All debug logging suppressed as per request
+    // console.log('Creating manual blood glucose entry:', reading);
     
     const entry = {
       type: 'mbg',
@@ -283,9 +347,11 @@ export class NightscoutClient {
       device: reading.device || 'Manual Entry',
       utcOffset: new Date().getTimezoneOffset(),
       sysTime: new Date(reading.date).toISOString(),
+      direction: reading.direction,
       source: 'glucohub',
       device_source: reading.device_source,
       test: reading.test,
+      app: 'glucohub', // Required field for API v3
       customFields: {
         source: 'glucohub',
         version: '1.0.0',
@@ -298,13 +364,15 @@ export class NightscoutClient {
       }
     };
 
-    console.log('Creating entry with data:', entry);
+    // All debug logging suppressed as per request
+    // console.log('Creating entry with data:', entry);
     const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
       body: JSON.stringify(entry),
     });
 
-    console.log('Create mbg response:', result);
+    // All debug logging suppressed as per request
+    // console.log('Create mbg response:', result);
 
     if (!result || !result.identifier) {
       throw new Error('Failed to create manual blood glucose entry: Invalid response from server');
@@ -322,10 +390,12 @@ export class NightscoutClient {
       throw new Error('Cannot update manual blood glucose entry: Missing Nightscout ID');
     }
 
-    console.log('Updating manual blood glucose entry:', reading);
+    // All debug logging suppressed as per request
+    // console.log('Updating manual blood glucose entry:', reading);
     
     // First delete the existing entry
-    console.log('Deleting existing entry with ID:', reading.nightscoutId);
+    // All debug logging suppressed as per request
+    // console.log('Deleting existing entry with ID:', reading.nightscoutId);
     await this.deleteBloodGlucoseEntry(reading.nightscoutId);
     
     // Then create a new entry with the updated data
@@ -337,13 +407,15 @@ export class NightscoutClient {
       device: reading.device || 'Manual Entry'
     };
 
-    console.log('Creating new entry with data:', entry);
+    // All debug logging suppressed as per request
+    // console.log('Creating new entry with data:', entry);
     const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
       body: JSON.stringify([entry]), // API expects an array
     });
 
-    console.log('Create mbg response:', result);
+    // All debug logging suppressed as per request
+    // console.log('Create mbg response:', result);
 
     // Handle array response
     const createdEntry = Array.isArray(result) ? result[0] : result;
@@ -359,16 +431,19 @@ export class NightscoutClient {
   }
 
   async deleteBloodGlucoseEntry(id: string): Promise<void> {
-    console.log('Deleting blood glucose entry with ID:', id);
+    // All debug logging suppressed as per request
+    // console.log('Deleting blood glucose entry with ID:', id);
     await this.fetchWithAuth(`/api/v3/entries/${id}`, {
       method: 'DELETE',
     });
   }
 
   async getSensorGlucoseReadings(): Promise<BloodGlucoseReading[]> {
-    console.log('Fetching sensor glucose readings...');
+    // All debug logging suppressed as per request
+    // console.log('Fetching sensor glucose readings...');
     const entries = await this.fetchWithAuth('/api/v3/entries?type$eq=sgv');
-    console.log('Raw sgv entries:', entries);
+    // All debug logging suppressed as per request
+    // console.log('Raw sgv entries:', entries);
     
     return entries.map((entry: any) => ({
       id: entry.identifier,
@@ -385,7 +460,8 @@ export class NightscoutClient {
   }
 
   async createSensorGlucoseEntry(reading: Omit<BloodGlucoseReading, 'id'>): Promise<BloodGlucoseReading> {
-    console.log('Creating sensor glucose entry:', reading);
+    // All debug logging suppressed as per request
+    // console.log('Creating sensor glucose entry:', reading);
     
     const entry = {
       type: 'sgv',
@@ -399,6 +475,7 @@ export class NightscoutClient {
       source: 'glucohub',
       device_source: reading.device_source,
       test: reading.test,
+      app: 'glucohub', // Required field for API v3
       customFields: {
         source: 'glucohub',
         version: '1.0.0',
@@ -411,13 +488,15 @@ export class NightscoutClient {
       }
     };
 
-    console.log('Creating entry with data:', entry);
+    // All debug logging suppressed as per request
+    // console.log('Creating entry with data:', entry);
     const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
       body: JSON.stringify(entry),
     });
 
-    console.log('Create sgv response:', result);
+    // All debug logging suppressed as per request
+    // console.log('Create sgv response:', result);
 
     if (!result || !result.identifier) {
       throw new Error('Failed to create sensor glucose entry: Invalid response from server');
@@ -435,10 +514,12 @@ export class NightscoutClient {
       throw new Error('Cannot update sensor glucose entry: Missing Nightscout ID');
     }
 
-    console.log('Updating sensor glucose entry:', reading);
+    // All debug logging suppressed as per request
+    // console.log('Updating sensor glucose entry:', reading);
     
     // First delete the existing entry
-    console.log('Deleting existing entry with ID:', reading.nightscoutId);
+    // All debug logging suppressed as per request
+    // console.log('Deleting existing entry with ID:', reading.nightscoutId);
     await this.deleteSensorGlucoseEntry(reading.nightscoutId);
     
     // Then create a new entry with the updated data
@@ -450,13 +531,15 @@ export class NightscoutClient {
       device: reading.device || 'CGM'
     };
 
-    console.log('Creating new entry with data:', entry);
+    // All debug logging suppressed as per request
+    // console.log('Creating new entry with data:', entry);
     const result = await this.fetchWithAuth('/api/v3/entries', {
       method: 'POST',
       body: JSON.stringify([entry]), // API expects an array
     });
 
-    console.log('Create sgv response:', result);
+    // All debug logging suppressed as per request
+    // console.log('Create sgv response:', result);
 
     // Handle array response
     const createdEntry = Array.isArray(result) ? result[0] : result;
@@ -472,7 +555,8 @@ export class NightscoutClient {
   }
 
   async deleteSensorGlucoseEntry(id: string): Promise<void> {
-    console.log('Deleting sensor glucose entry with ID:', id);
+    // All debug logging suppressed as per request
+    // console.log('Deleting sensor glucose entry with ID:', id);
     await this.fetchWithAuth(`/api/v3/entries/${id}`, {
       method: 'DELETE',
     });
@@ -498,17 +582,26 @@ export class NightscoutClient {
     }
   }
 
-  async getBloodGlucoseReadingsInRange(startDate: number, endDate: number): Promise<BloodGlucoseReading[]> {
-    console.log('Fetching manual blood glucose readings in range...');
-    const startDateStr = new Date(startDate).toISOString().split('T')[0];
-    const endDateStr = new Date(endDate).toISOString().split('T')[0];
+  async getBloodGlucoseReadingsInRange(startDate: number, endDate: number, localDateString?: string): Promise<BloodGlucoseReading[]> {
+    // All debug logging suppressed as per request
+    // console.log('Fetching manual blood glucose readings in range...');
+    // Use the provided localDateString for filtering if available
+    const startDateStr = localDateString || getLocalDateString(new Date(startDate));
+    const endDateStr = localDateString || getLocalDateString(new Date(endDate));
     
+    // Use dateString$re for reliable date filtering
     const entries = await this.fetchWithAuth(
       `/api/v3/entries?type$eq=mbg&dateString$re=^${startDateStr}|^${endDateStr}`
     );
-    console.log('Raw mbg entries:', entries);
+    // All debug logging suppressed as per request
+    // console.log('Raw mbg entries:', entries);
     
-    return entries.map((entry: any) => ({
+    // Filter entries to ensure they're within the exact time range
+    const filteredEntries = entries.filter((entry: any) => 
+      entry.date >= startDate && entry.date <= endDate
+    );
+    
+    return filteredEntries.map((entry: any) => ({
       id: entry.identifier,
       nightscoutId: entry.identifier,
       date: entry.date,
@@ -523,11 +616,13 @@ export class NightscoutClient {
   }
 
   async verifyEntryExists(reading: BloodGlucoseReading): Promise<boolean> {
-    console.log('Verifying entry exists:', reading);
-    const timestamp = Date.now();
-    // Query for entries within a 1-second window of the reading's date
+    // All debug logging suppressed as per request
+    // console.log('Verifying entry exists:', reading);
+    const dateStr = new Date(reading.date).toISOString().split('T')[0];
+    
+    // Use dateString$re for reliable date filtering
     const entries = await this.fetchWithAuth(
-      `/api/v3/entries?type$eq=mbg&dateString$re=^${new Date(reading.date).toISOString().split('T')[0]}|^${new Date(reading.date).toISOString().split('T')[0]}`
+      `/api/v3/entries?type$eq=mbg&dateString$re=^${dateStr}`
     );
     
     // Check if any entry matches the reading's date and value
@@ -535,21 +630,36 @@ export class NightscoutClient {
       Math.abs(entry.date - reading.date) < 1000 && entry.mbg === reading.mbg
     );
     
-    console.log('Entry verification result:', exists);
+    // All debug logging suppressed as per request
+    // console.log('Entry verification result:', exists);
     return exists;
   }
 
-  async getSensorGlucoseReadingsInRange(startDate: number, endDate: number): Promise<BloodGlucoseReading[]> {
-    console.log('Fetching sensor glucose readings in range...');
-    const startDateStr = new Date(startDate).toISOString().split('T')[0];
-    const endDateStr = new Date(endDate).toISOString().split('T')[0];
+  async getSensorGlucoseReadingsInRange(startDate: number, endDate: number, localDateString?: string, timezoneOffsetMinutes?: number): Promise<BloodGlucoseReading[]> {
+    // Get UTC date strings for the API query
+    const startDateUTC = new Date(startDate);
+    const endDateUTC = new Date(endDate);
+    const startDateStr = startDateUTC.toISOString().split('T')[0];  // YYYY-MM-DD in UTC
+    const endDateStr = endDateUTC.toISOString().split('T')[0];      // YYYY-MM-DD in UTC
     
+    // Use dateString$re with UTC date strings for reliable date filtering
     const entries = await this.fetchWithAuth(
       `/api/v3/entries?type$eq=sgv&dateString$re=^${startDateStr}|^${endDateStr}`
     );
-    console.log('Raw sgv entries:', entries);
     
-    return entries.map((entry: any) => ({
+    // Get the local date string for the selected day (e.g., '2025-06-10')
+    const selectedLocalDateStr = localDateString || new Date(startDate).toISOString().split('T')[0];
+    
+    // Filter entries: use new Date(entry.date) to get local time, format as YYYY-MM-DD, compare to selectedLocalDateStr
+    const filteredEntries = entries.filter((entry: any) => {
+      const localDate = new Date(entry.date);
+      const localDateStr = localDate.getFullYear() + '-' +
+        String(localDate.getMonth() + 1).padStart(2, '0') + '-' +
+        String(localDate.getDate()).padStart(2, '0');
+      return localDateStr === selectedLocalDateStr;
+    });
+    
+    return filteredEntries.map((entry: any) => ({
       id: entry.identifier,
       nightscoutId: entry.identifier,
       date: entry.date,
@@ -563,18 +673,26 @@ export class NightscoutClient {
     }));
   }
 
-  async getMealEntriesInRange(startDate: number, endDate: number): Promise<Meal[]> {
-    console.log('Fetching meals in range...');
-    const startDateStr = new Date(startDate).toISOString().split('T')[0];
-    const endDateStr = new Date(endDate).toISOString().split('T')[0];
+  async getMealEntriesInRange(startDate: number, endDate: number, localDateString?: string): Promise<Meal[]> {
+    // All debug logging suppressed as per request
+    // console.log('Fetching meals in range...');
+    const startDateStr = localDateString || getLocalDateString(new Date(startDate));
+    const endDateStr = localDateString || getLocalDateString(new Date(endDate));
     
+    // Use created_at$re for treatments (meals)
     const treatments = await this.fetchWithAuth(
       `/api/v3/treatments?eventType$eq=Meal&created_at$re=^${startDateStr}|^${endDateStr}`
     );
-    console.log('Raw treatments:', treatments);
+    // All debug logging suppressed as per request
+    // console.log('Raw treatments:', treatments);
+    
+    // Filter treatments to ensure they're within the exact time range
+    const filteredTreatments = treatments.filter((treatment: any) => 
+      treatment.date >= startDate && treatment.date <= endDate
+    );
     
     // Filter for meal entries and map to Meal objects
-    const meals = treatments
+    const meals = filteredTreatments
       .filter((treatment: any) => treatment.carbs !== undefined)
       .map((treatment: any) => ({
         id: treatment.identifier,
@@ -583,13 +701,14 @@ export class NightscoutClient {
         protein: treatment.protein || 0,
         fat: treatment.fat || 0,
         notes: treatment.notes,
-        timestamp: treatment.date / 1000, // Convert from milliseconds to seconds
+        created_at: treatment.created_at, // <-- Use for plotting
         synced: true,
         foodItems: treatment.foodItems || [],
         nightscoutId: treatment.identifier
       }));
     
-    console.log('Processed meals:', meals);
+    // All debug logging suppressed as per request
+    // console.log('Processed meals:', meals);
     return meals;
   }
 } 

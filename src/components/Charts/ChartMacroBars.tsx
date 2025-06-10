@@ -13,81 +13,83 @@ interface MacroBarProps {
 export const ChartMacroBars: React.FC<MacroBarProps> = ({ mealData, xScale, yScale, macroColors, barWidth = 16, showMealTooltip, hideMealTooltip }) => {
   const hasLoggedRef = useRef(false);
 
+  // Log meal data on first render
+  React.useEffect(() => {
+    if (!hasLoggedRef.current && mealData.length > 0) {
+      // All debug logging suppressed as per request
+      // console.log('[ChartMacroBars] Meal data:', {
+      //   count: mealData.length,
+      //   meals: mealData.map(m => {
+      //     if (!m.created_at) {
+      //       console.warn('[ChartMacroBars] Invalid created_at for meal:', m);
+      //       return null;
+      //     }
+      //     const utcDate = new Date(m.created_at);
+      //     const hour = utcDate.getHours() + utcDate.getMinutes() / 60;
+      //     return {
+      //       name: m.name,
+      //       utc: utcDate.toISOString(),
+      //       local: utcDate.toString(),
+      //       carbs: m.carbs,
+      //       hour
+      //     };
+      //   }).filter(Boolean)
+      // });
+      hasLoggedRef.current = true;
+    }
+  }, [mealData]);
+
   return (
     <g>
-      {mealData.map((meal, i) => {
-        // Validate timestamp
-        if (!meal.timestamp || isNaN(meal.timestamp)) {
-          console.warn('Invalid timestamp for meal:', meal);
+      {[...mealData].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map((meal, i) => {
+        if (!meal.created_at) {
+          // All debug logging suppressed as per request
+          // console.warn('[ChartMacroBars] Invalid created_at for meal:', meal);
           return null;
         }
-
-        // Use milliseconds for timestamp (consistent with data fetching)
-        const mealDate = new Date(meal.timestamp);
-        if (isNaN(mealDate.getTime())) {
-          console.warn('Invalid date for meal:', meal);
-          return null;
-        }
-
-        // Calculate hour of day as a float (e.g., 13.5 for 1:30pm), in local time to match ramen noodle icons
-        const hour = mealDate.getHours() + mealDate.getMinutes() / 60;
+        const utcDate = new Date(meal.created_at);
+        const hour = utcDate.getHours() + utcDate.getMinutes() / 60;
         const barX = xScale(hour) - barWidth / 2;
-
-        // Only use carbs for bar height
+        if (!hasLoggedRef.current) {
+          // All debug logging suppressed as per request
+          // console.log('[ChartMacroBars] Bar positioning:', {
+          //   meal: meal.name,
+          //   utc: utcDate.toISOString(),
+          //   local: utcDate.toString(),
+          //   hour,
+          //   carbs: meal.carbs,
+          //   barX
+          // });
+        }
         const carbs = Number(meal.carbs) || 0;
-        if (carbs <= 0) return null;
-
-        // Scale carbs (0-100) to y-axis (40-400)
+        if (carbs <= 0) {
+          // All debug logging suppressed as per request
+          // console.warn('[ChartMacroBars] Meal has no carbs:', meal);
+          return null;
+        }
         const yValue = 40 + (carbs / 100) * (400 - 40);
         const barY = yScale(yValue);
-        const barBase = yScale(40); // bottom of the chart
+        const barBase = yScale(40);
         const barHeight = barBase - barY;
-
-        // Only log debug info on first render
-        if (!hasLoggedRef.current) {
-          console.log('[CarbBar Debug]', {
-            mealTimestamp: meal.timestamp,
-            mealDate: mealDate,
-            hour,
-            carbs
-          });
-          if (i === mealData.length - 1) {
-            hasLoggedRef.current = true;
-          }
-        }
-
         return (
-          <g key={`carb-bar-${i}`}
-            style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.06))' }}
-          >
+          <g key={`meal-${i}`}>
             <rect
               x={barX}
               y={barY}
               width={barWidth}
               height={barHeight}
               fill={macroColors.carbs}
-              fillOpacity={0.7}
+              opacity={0.6}
               onMouseMove={event => {
-                if (showMealTooltip) {
-                  showMealTooltip({
-                    tooltipData: [meal],
-                    tooltipLeft: event.clientX - 50,
-                    tooltipTop: event.clientY - 50,
-                  });
-                }
+                showMealTooltip({
+                  tooltipData: meal,
+                  tooltipLeft: event.clientX - 50,
+                  tooltipTop: event.clientY - 50,
+                });
               }}
               onMouseLeave={hideMealTooltip}
+              style={{ cursor: 'pointer' }}
             />
-            <text
-              x={xScale(hour)}
-              y={barY - 6}
-              textAnchor="middle"
-              fontSize={13}
-              fill="#888"
-              fontWeight={600}
-            >
-              {carbs}
-            </text>
           </g>
         );
       })}

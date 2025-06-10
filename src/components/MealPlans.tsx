@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNightscout } from '../contexts/NightscoutContext';
-import { FoodEntry } from '../types/nightscout';
+import { FoodEntry, Meal } from '../types/nightscout';
 import Papa from 'papaparse';
+import { parseFoodCSV } from '../utils/csvParser';
 
 interface CSVFoodEntry {
   name: string;
@@ -11,18 +12,37 @@ interface CSVFoodEntry {
   notes?: string;
 }
 
+const REQUIRED_CSV_COLUMNS = ['name', 'carbs', 'protein', 'fat'];
+const OPTIONAL_CSV_COLUMNS = ['notes', 'category', 'subcategory', 'gi', 'energy'];
+
+const CSV_EXAMPLE = `name,carbs,protein,fat,notes,category,subcategory,gi,energy
+W1D1 | Breakfast,45,20,15,Category: Meal, Subcategory: Breakfast, GI: 2, Energy: 1895kJ
+W1D1 | Lunch,60,30,25,Category: Meal, Subcategory: Lunch, GI: 3, Energy: 2500kJ
+W1D1 | Dinner,55,35,20,Category: Meal, Subcategory: Dinner, GI: 2, Energy: 2200kJ`;
+
+const validateCSVHeaders = (headers: string[]): { valid: boolean; missing: string[] } => {
+  const missing = REQUIRED_CSV_COLUMNS.filter(col => !headers.includes(col));
+  return {
+    valid: missing.length === 0,
+    missing
+  };
+};
+
 export const MealPlans: React.FC = () => {
   const { nightscout } = useNightscout();
   const [foods, setFoods] = useState<FoodEntry[]>([]);
+  const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingFood, setEditingFood] = useState<FoodEntry | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<'foods' | 'meals'>('foods');
 
   useEffect(() => {
     if (nightscout) {
       loadFoods();
+      loadMeals();
     }
   }, [nightscout]);
 
@@ -35,9 +55,30 @@ export const MealPlans: React.FC = () => {
     try {
       setLoading(true);
       const entries = await nightscout.getFoodEntries();
+      console.log('Loaded food entries:', entries);
       setFoods(entries);
     } catch (error) {
+      console.error('Error loading foods:', error);
       setError(error instanceof Error ? error.message : 'Failed to load foods');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMeals = async () => {
+    if (!nightscout) {
+      setError('Nightscout client not initialized');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const entries = await nightscout.getMealEntries();
+      console.log('Loaded meal entries:', entries);
+      setMeals(entries);
+    } catch (error) {
+      console.error('Error loading meals:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load meals');
     } finally {
       setLoading(false);
     }
@@ -52,9 +93,41 @@ export const MealPlans: React.FC = () => {
     try {
       setLoading(true);
       
+      // Read the file content
+      const text = await file.text();
+      
+      // Parse headers first to validate
+      const { data, meta } = Papa.parse<string[]>(text, {
+        header: false,
+        skipEmptyLines: true,
+        preview: 1 // Only read the first row to get headers
+      });
+
+      // Get headers from first row
+      const headers = data[0] || [];
+      
+      // Validate headers
+      const validation = validateCSVHeaders(headers);
+      if (!validation.valid) {
+        throw new Error(`CSV is missing required columns: ${validation.missing.join(', ')}`);
+      }
+      
+      // Parse the full CSV content
+      const foodEntries = parseFoodCSV(text);
+      
+      if (foodEntries.length === 0) {
+        throw new Error('No valid food entries found in CSV');
+      }
+      
       // Create food entries in Nightscout
       await Promise.all(
-        foods.map(food => nightscout.createFoodEntry(food))
+        foodEntries.map(food => nightscout.createFoodEntry({
+          name: food.name,
+          carbs: food.carbs,
+          protein: food.protein,
+          fat: food.fat,
+          notes: food.notes
+        }))
       );
       
       await loadFoods();
@@ -122,6 +195,10 @@ export const MealPlans: React.FC = () => {
     food.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredMeals = meals.filter(meal =>
+    meal.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -150,59 +227,133 @@ export const MealPlans: React.FC = () => {
         </div>
       )}
 
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('foods')}
+              className={`${
+                activeTab === 'foods'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Food Entries
+            </button>
+            <button
+              onClick={() => setActiveTab('meals')}
+              className={`${
+                activeTab === 'meals'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Meal Entries
+            </button>
+          </nav>
+        </div>
+      </div>
+
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Search foods..."
+          placeholder={`Search ${activeTab === 'foods' ? 'foods' : 'meals'}...`}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full px-4 py-2 border rounded"
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredFoods.map((food) => (
-          <div key={food.id} className="border rounded p-4">
-            <h3 className="font-semibold">{food.name}</h3>
-            <p className="text-sm text-gray-600">
-              Carbs: {food.carbs}g | Protein: {food.protein}g | Fat: {food.fat}g
-            </p>
-            {food.notes && (
-              <p className="text-sm text-gray-500 mt-2">{food.notes}</p>
-            )}
-            <div className="mt-4 flex space-x-2">
-              <button
-                onClick={() => setEditingFood(food)}
-                className="text-blue-600 hover:text-blue-800"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDeleteFood(food.id)}
-                className="text-red-600 hover:text-red-800"
-              >
-                Delete
-              </button>
+      {activeTab === 'foods' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredFoods.map((food) => (
+            <div key={food.id} className="border rounded p-4">
+              <h3 className="font-semibold">{food.name}</h3>
+              <p className="text-sm text-gray-600">
+                Carbs: {food.carbs}g | Protein: {food.protein}g | Fat: {food.fat}g
+              </p>
+              {food.notes && (
+                <p className="text-sm text-gray-500 mt-2">{food.notes}</p>
+              )}
+              <div className="mt-4 flex space-x-2">
+                <button
+                  onClick={() => setEditingFood(food)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteFood(food.id)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredMeals.map((meal) => (
+            <div key={meal.id} className="border rounded p-4">
+              <h3 className="font-semibold">{meal.name}</h3>
+              <p className="text-sm text-gray-600">
+                Carbs: {meal.carbs}g | Protein: {meal.protein}g | Fat: {meal.fat}g
+              </p>
+              {meal.notes && meal.notes !== meal.name && (
+                <p className="text-sm text-gray-500 mt-2">{meal.notes}</p>
+              )}
+              <p className="text-sm text-gray-500 mt-2">
+                {new Date(meal.timestamp * 1000).toLocaleString()}
+              </p>
+              {meal.foodItems && meal.foodItems.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium">Food Items:</p>
+                  <ul className="text-sm text-gray-600 list-disc list-inside">
+                    {meal.foodItems.map((food, index) => (
+                      <li key={index}>{typeof food === 'string' ? food : food.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {showUploadDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg">
-            <h2 className="text-xl font-bold mb-4">Upload CSV</h2>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleCSVUpload(file);
-                }
-              }}
-              className="mb-4"
-            />
+          <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4">
+            <h2 className="text-xl font-bold mb-4">Upload Meal Plans CSV</h2>
+            
+            <div className="mb-6">
+              <h3 className="font-semibold mb-2">Required CSV Format:</h3>
+              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                <p className="text-sm text-gray-600 mb-2">Required columns: {REQUIRED_CSV_COLUMNS.join(', ')}</p>
+                <p className="text-sm text-gray-600 mb-2">Optional columns: {OPTIONAL_CSV_COLUMNS.join(', ')}</p>
+                <div className="mt-4">
+                  <p className="text-sm font-medium mb-2">Example CSV:</p>
+                  <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+                    {CSV_EXAMPLE}
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleCSVUpload(file);
+                  }
+                }}
+                className="w-full px-3 py-2 border rounded"
+              />
+            </div>
+
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowUploadDialog(false)}

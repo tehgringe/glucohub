@@ -22,10 +22,7 @@ import { ChartActivityBand } from './Charts/ChartActivityBand';
 import { ChartTooltips } from './Charts/ChartTooltips';
 import { ChartAxes } from './Charts/ChartAxes';
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
-import { parseSimulatedStepsCSV, SimulatedStepsRow } from '../utils/csvParser';
-import { parseRealHeartRateCSV, SimulatedHeartRateRow } from '../utils/csvParser';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import ChartActivityArea from './Charts/ChartActivityArea';
 
 const width = 1200;
 const height = 500;
@@ -68,7 +65,7 @@ export const Charts24HourView2: React.FC = () => {
   const {
     mbgData,
     sgvData,
-    mealData,
+    meals,
     loading,
     error,
     selectedDate,
@@ -134,195 +131,41 @@ export const Charts24HourView2: React.FC = () => {
   type ActivityBins = { [key: string]: ActivityItem[] };
   const groupActivities = (): ActivityBins => {
     const bins: ActivityBins = {};
-    const getBinKey = (date: Date): string => format(date, 'HH:mm');
-    mealData.forEach((meal) => {
-      const date = new Date(meal.timestamp);
+    const getBinKey = (date: Date): string => {
+      if (!(date instanceof Date) || isNaN(date.getTime())) {
+        // Defensive: fallback or skip
+        return 'invalid';
+      }
+      return format(date, 'HH:mm');
+    };
+    meals.forEach((meal) => {
+      const date = meal.created_at ? new Date(meal.created_at) : null;
+      if (!date || isNaN(date.getTime())) {
+        console.warn('[groupActivities] Invalid created_at for meal:', meal);
+        return;
+      }
       const binKey = getBinKey(date);
       if (!bins[binKey]) bins[binKey] = [];
       bins[binKey].push({ type: 'meal', data: meal });
     });
     mbgData.forEach((mbg) => {
-      const date = new Date(mbg.timestamp);
+      const date = mbg.timestamp ? new Date(mbg.timestamp) : null;
+      if (!date || isNaN(date.getTime())) {
+        console.warn('[groupActivities] Invalid timestamp for MBG:', mbg);
+        return;
+      }
       const binKey = getBinKey(date);
       if (!bins[binKey]) bins[binKey] = [];
       bins[binKey].push({ type: 'mbg', data: mbg });
     });
     return bins;
   };
-  const activityBins = useMemo(() => groupActivities(), [mealData, mbgData]);
-
-  const [stepsData, setStepsData] = useState<SimulatedStepsRow[]>([]);
-  const [hrData, setHrData] = useState<SimulatedHeartRateRow[]>([]);
-
-  useEffect(() => {
-    fetch('/simulated_steps_data.csv')
-      .then(res => res.text())
-      .then(text => {
-        console.log('Raw CSV text:', text);
-        const parsed = parseSimulatedStepsCSV(text);
-        console.log('Parsed steps data:', parsed);
-        setStepsData(parsed);
-      })
-      .catch(err => {
-        console.error('Error loading steps data:', err);
-        setStepsData([]);
-      });
-  }, []);
-
-  useEffect(() => {
-    fetch('/HeartRate3.csv')
-      .then(res => res.text())
-      .then(text => setHrData(parseRealHeartRateCSV(text)))
-      .catch(() => setHrData([]));
-  }, []);
-
-  // Position the heart rate band as the topmost lane in the activity area
-  const hrBandHeight = 40;
-  const hrBandTop = height + 8; // Just below the main chart area
-  const stepsBandTop = hrBandTop + hrBandHeight + 8;
-  const stepsBarColor = '#FFB566'; // pastel orange
-
-  // Tooltip for steps
-  const {
-    tooltipData: stepsTooltipData,
-    tooltipLeft: stepsTooltipLeft,
-    tooltipTop: stepsTooltipTop,
-    showTooltip: showStepsTooltip,
-    hideTooltip: hideStepsTooltip,
-    tooltipOpen: stepsTooltipOpen
-  } = useTooltip<SimulatedStepsRow>();
-
-  // Filter steps data to only show entries for the selected date
-  const filteredStepsData = useMemo(() => {
-    const selectedDateStr = selectedDate;
-    return stepsData.filter(step => {
-      const stepDate = format(step.start, 'yyyy-MM-dd');
-      return stepDate === selectedDateStr;
-    });
-  }, [stepsData, selectedDate]);
-
-  // Filter HR data to only show entries for the selected date
-  const filteredHrData = useMemo(() => {
-    const selectedDateStr = selectedDate;
-    const filtered = hrData.filter(hr => format(hr.datetime, 'yyyy-MM-dd') === selectedDateStr);
-    console.log('Filtered heart rate data for selected date:', filtered);
-    return filtered;
-  }, [hrData, selectedDate]);
-
-  const hrLineColor = '#FF7A7A'; // pastel red
-
-  // Y-scale for heart rate
-  const hrYScale = scaleLinear({
-    domain: [60, 130],
-    range: [hrBandTop + hrBandHeight, hrBandTop],
-  });
-
-  // Heart rate y-axis ticks
-  const hrYTicks = [60, 80, 100, 120, 130];
-
-  // Tooltip for heart rate
-  const {
-    tooltipData: hrTooltipData,
-    tooltipLeft: hrTooltipLeft,
-    tooltipTop: hrTooltipTop,
-    showTooltip: showHrTooltip,
-    hideTooltip: hideHrTooltip,
-    tooltipOpen: hrTooltipOpen
-  } = useTooltip<SimulatedHeartRateRow>();
-
-  // Ensure filteredHrData is sorted by timestamp before averaging
-  const sortedHrData = useMemo(() =>
-    [...filteredHrData].sort((a, b) => a.datetime.getTime() - b.datetime.getTime()),
-    [filteredHrData]
-  );
-
-  // Compute 1-minute averages for heart rate data
-  const hrMinuteAverages = useMemo(() => {
-    const byMinute = new Map<string, { sum: number; count: number; ts: number }>();
-    sortedHrData.forEach(hr => {
-      const d = hr.datetime;
-      const minuteKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}-${d.getMinutes()}`;
-      if (!byMinute.has(minuteKey)) {
-        byMinute.set(minuteKey, { sum: 0, count: 0, ts: new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()).getTime() });
-      }
-      const entry = byMinute.get(minuteKey)!;
-      entry.sum += hr.heartrate;
-      entry.count += 1;
-    });
-    return Array.from(byMinute.values()).map(({ sum, count, ts }) => ({
-      datetime: new Date(ts),
-      heartrate: sum / count,
-      count
-    })).sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
-  }, [sortedHrData]);
-
-  // Split hrMinuteAverages into segments where the gap is >5 minutes
-  const hrSegments = useMemo(() => {
-    if (!hrMinuteAverages.length) return [];
-    const segments: typeof hrMinuteAverages[] = [];
-    let current: typeof hrMinuteAverages = [hrMinuteAverages[0]];
-    for (let i = 1; i < hrMinuteAverages.length; i++) {
-      const prev = hrMinuteAverages[i - 1];
-      const curr = hrMinuteAverages[i];
-      if (curr.datetime.getTime() - prev.datetime.getTime() > 5 * 60 * 1000) {
-        segments.push(current);
-        current = [];
-      }
-      current.push(curr);
-    }
-    if (current.length) segments.push(current);
-    return segments;
-  }, [hrMinuteAverages]);
-
-  // Calculate the mean HR for the day
-  const hrMean = useMemo(() => {
-    if (!hrMinuteAverages.length) return 0;
-    return hrMinuteAverages.reduce((sum, d) => sum + d.heartrate, 0) / hrMinuteAverages.length;
-  }, [hrMinuteAverages]);
-
-  // Find elevated HR periods (>= mean+20 for 30+ consecutive minutes)
-  const hrBadges = useMemo(() => {
-    const threshold = hrMean + 20;
-    const badges = [];
-    let run: typeof hrMinuteAverages = [];
-    for (let i = 0; i < hrMinuteAverages.length; i++) {
-      if (hrMinuteAverages[i].heartrate >= threshold) {
-        run.push(hrMinuteAverages[i]);
-      } else {
-        if (run.length >= 30) {
-          // Compute average HR and midpoint
-          const avgHR = run.reduce((sum, d) => sum + d.heartrate, 0) / run.length;
-          const midIdx = Math.floor(run.length / 2);
-          badges.push({
-            datetime: run[midIdx].datetime,
-            avgHR,
-            start: run[0].datetime,
-            end: run[run.length - 1].datetime
-          });
-        }
-        run = [];
-      }
-    }
-    // Check for run at end
-    if (run.length >= 30) {
-      const avgHR = run.reduce((sum, d) => sum + d.heartrate, 0) / run.length;
-      const midIdx = Math.floor(run.length / 2);
-      badges.push({
-        datetime: run[midIdx].datetime,
-        avgHR,
-        start: run[0].datetime,
-        end: run[run.length - 1].datetime
-      });
-    }
-    return badges;
-  }, [hrMinuteAverages, hrMean]);
+  const activityBins = useMemo(() => groupActivities(), [meals, mbgData]);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
 
   // Add debug logging for rendering
-  console.log('Current steps data for rendering:', stepsData);
-  console.log('Steps band position:', { stepsBandTop, stepsBandHeight });
 
   return (
     <div>
@@ -468,7 +311,7 @@ export const Charts24HourView2: React.FC = () => {
             />
           )}
           <ChartMacroBars
-            mealData={mealData}
+            mealData={meals}
             xScale={xScale}
             yScale={yScale}
             macroColors={macroColors}
@@ -476,25 +319,6 @@ export const Charts24HourView2: React.FC = () => {
             hideMealTooltip={hideMealTooltip}
           />
         </Group>
-      </svg>
-      <svg width={width} height={120} style={{ background: palette.bg, display: 'block' }}>
-        <ChartActivityArea
-          hrSegments={hrSegments}
-          hrBadges={hrBadges}
-          filteredStepsData={filteredStepsData}
-          activityBins={activityBins}
-          xScale={xScale}
-          width={width}
-          margin={margin}
-          palette={palette}
-          macroColors={macroColors}
-          showHrTooltip={showHrTooltip}
-          hideHrTooltip={hideHrTooltip}
-          showStepsTooltip={showStepsTooltip}
-          hideStepsTooltip={hideStepsTooltip}
-          showMealTooltip={showMealTooltip}
-          hideMealTooltip={hideMealTooltip}
-        />
       </svg>
       <ChartTooltips
         tooltipOpen={tooltipOpen}
@@ -509,14 +333,6 @@ export const Charts24HourView2: React.FC = () => {
         mbgIconTooltipData={mbgIconTooltipData}
         mbgIconTooltipLeft={mbgIconTooltipLeft}
         mbgIconTooltipTop={mbgIconTooltipTop}
-        stepsTooltipOpen={stepsTooltipOpen}
-        stepsTooltipData={stepsTooltipData}
-        stepsTooltipLeft={stepsTooltipLeft}
-        stepsTooltipTop={stepsTooltipTop}
-        hrTooltipOpen={hrTooltipOpen}
-        hrTooltipData={hrTooltipData}
-        hrTooltipLeft={hrTooltipLeft}
-        hrTooltipTop={hrTooltipTop}
         palette={palette}
         macroColors={macroColors}
       />

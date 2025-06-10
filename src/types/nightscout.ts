@@ -15,9 +15,10 @@ export interface Meal {
   fat: number;
   notes?: string;
   timestamp: number;
-  foodItems: FoodEntry[];
+  foodItems: (FoodEntry | string)[];
   synced: boolean;
   nightscoutId?: string;
+  created_at?: string;
 }
 
 export interface BloodGlucoseReading {
@@ -53,4 +54,12 @@ export interface NightscoutConfig {
   apiSecret: string;
   accessToken: string;
   enabled: boolean;
+  timezone?: {
+    // The user's timezone (e.g., 'America/New_York')
+    name: string;
+    // Whether to use the browser's timezone
+    useBrowserTimezone: boolean;
+    // Manual offset in minutes (only used if useBrowserTimezone is false)
+    manualOffset?: number;
+  };
 } 

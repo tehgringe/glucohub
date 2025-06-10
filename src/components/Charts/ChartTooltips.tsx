@@ -124,7 +124,12 @@ export const ChartTooltips = ({
           <div style={{ marginTop: 8, color: palette.muted, fontSize: 14 }}>{data.notes}</div>
         )}
         <div style={{ marginTop: 8, color: palette.muted, fontSize: 13 }}>
-          {new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {(() => {
+            const mealDate = data.created_at ? new Date(data.created_at) : null;
+            return mealDate && !isNaN(mealDate.getTime())
+              ? mealDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : 'N/A';
+          })()}
         </div>
       </div>
     </TooltipWithBounds>

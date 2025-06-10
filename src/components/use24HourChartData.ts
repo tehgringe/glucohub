@@ -1,290 +1,217 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNightscout } from '../contexts/NightscoutContext';
-import { format, addDays, subDays, parseISO, startOfDay, endOfDay } from 'date-fns';
-import { formatInTimeZone, toZonedTime, getTimezoneOffset } from 'date-fns-tz';
-import { BloodGlucoseReading, Meal } from '../types/nightscout';
+import { NightscoutConfig, BloodGlucoseReading, Meal } from '../types/nightscout';
+import { getChartDateRange, analyzeDataQuality, formatDateRange } from '../lib/dateUtils';
+import { format } from 'date-fns';
 
-export interface ChartDataPoint {
-  timestamp: number;
-  hour: number;
-  value: number;
-  type: string;
+interface ChartData {
+  mbgData: Array<{ timestamp: number; value: number; type: 'mbg'; hour: number }>;
+  sgvData: Array<{ timestamp: number; value: number; type: 'sgv'; hour: number }>;
+  meals: Meal[];
+  dateRange: ReturnType<typeof getChartDateRange>;
+  dataQuality: ReturnType<typeof analyzeDataQuality>;
+  isLoading: boolean;
+  error: string | null;
+  loading: boolean;
+  selectedDate: string;
+  setSelectedDate: (date: string) => void;
+  showMBG: boolean;
+  setShowMBG: (show: boolean) => void;
+  showSGV: boolean;
+  setShowSGV: (show: boolean) => void;
+  showAvg: boolean;
+  setShowAvg: (show: boolean) => void;
+  boundLow: number;
+  setBoundLow: (value: number) => void;
+  boundHigh: number;
+  setBoundHigh: (value: number) => void;
+  avgSgv: number;
 }
 
-export function use24HourChartData() {
-  const { nightscout, config } = useNightscout();
-  const [mbgData, setMbgData] = useState<ChartDataPoint[]>([]);
-  const [sgvData, setSgvData] = useState<ChartDataPoint[]>([]);
-  const [mealData, setMealData] = useState<Meal[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+export function use24HourChartData(dateStr: string = format(new Date(), 'yyyy-MM-dd')): ChartData {
+  const { config, nightscout } = useNightscout();
+  const [data, setData] = useState<Omit<ChartData, 'loading' | 'selectedDate' | 'setSelectedDate' | 'showMBG' | 'setShowMBG' | 'showSGV' | 'setShowSGV' | 'showAvg' | 'setShowAvg' | 'boundLow' | 'setBoundLow' | 'boundHigh' | 'setBoundHigh' | 'avgSgv'>>({
+    mbgData: [],
+    sgvData: [],
+    meals: [],
+    dateRange: null as any,
+    dataQuality: null as any,
+    isLoading: true,
+    error: null
+  });
+
+  // Add state for component controls
+  const [selectedDate, setSelectedDate] = useState(dateStr);
   const [showMBG, setShowMBG] = useState(true);
   const [showSGV, setShowSGV] = useState(true);
   const [showAvg, setShowAvg] = useState(true);
   const [boundLow, setBoundLow] = useState(70);
-  const [boundHigh, setBoundHigh] = useState(140);
+  const [boundHigh, setBoundHigh] = useState(180);
 
-  const getJwtToken = async () => {
-    if (!nightscout) return null;
-    try {
-      return await nightscout.getJwtToken();
-    } catch {
-      return null;
+  // Calculate average SGV
+  const avgSgv = useMemo(() => {
+    if (!data.sgvData.length) return 0;
+    const sum = data.sgvData.reduce((acc, point) => acc + point.value, 0);
+    return sum / data.sgvData.length;
+  }, [data.sgvData]);
+
+  const loadData = useCallback(async () => {
+    if (!nightscout || !config) {
+      setData(prev => ({ ...prev, isLoading: false, error: 'Nightscout client not initialized' }));
+      return;
     }
-  };
 
-  // Helper function to safely parse a date
-  const safeParseDate = (dateStr: string | number): Date | null => {
     try {
-      if (typeof dateStr === 'string') {
-        // Handle ISO strings
-        if (dateStr.includes('T')) {
-          return new Date(dateStr);
-        }
-        // Handle numeric strings
-        const num = Number(dateStr);
-        if (!isNaN(num)) {
-          return new Date(num);
-        }
-      } else if (typeof dateStr === 'number') {
-        return new Date(dateStr);
-      }
-      console.warn('Invalid date format:', dateStr);
-      return null;
-    } catch (err) {
-      console.warn('Error parsing date:', dateStr, err);
-      return null;
-    }
-  };
+      // Get validated date range
+      const dateRange = getChartDateRange(selectedDate, config);
+      setData(prev => ({ ...prev, dateRange, isLoading: true, error: null }));
 
-  // Helper function to get date boundaries
-  const getDateBoundaries = (dateStr: string) => {
-    try {
-      const date = parseISO(dateStr);
-      if (isNaN(date.getTime())) {
-        throw new Error(`Invalid date string: ${dateStr}`);
-      }
-      
-      // Get the previous and next day to ensure we have complete coverage
-      const prevDate = format(subDays(date, 1), 'yyyy-MM-dd');
-      const nextDate = format(addDays(date, 1), 'yyyy-MM-dd');
-      
-      console.log('Date range:', {
-        prevDate,
-        selectedDate: dateStr,
-        nextDate,
-        parsedDate: date.toISOString()
+      // Add high-priority debug log for SGV fetch window
+      console.log('[SGV FETCH WINDOW] UTC:',
+        new Date(dateRange.fetchRange.start.getTime()).toISOString(),
+        'to',
+        new Date(dateRange.fetchRange.end.getTime()).toISOString()
+      );
+
+      // Fetch data for the validated range
+      const localDateString = (dateRange as any).localDateString;
+      const [mbgData, sgvData, meals] = await Promise.all([
+        nightscout.getBloodGlucoseReadingsInRange(
+          dateRange.fetchRange.start.getTime(),
+          dateRange.fetchRange.end.getTime(),
+          localDateString
+        ),
+        nightscout.getSensorGlucoseReadingsInRange(
+          dateRange.fetchRange.start.getTime(),
+          dateRange.fetchRange.end.getTime(),
+          localDateString
+        ),
+        nightscout.getMealEntriesInRange(
+          dateRange.fetchRange.start.getTime(),
+          dateRange.fetchRange.end.getTime(),
+          localDateString
+        )
+      ]);
+
+      // SGV/MBG: Use entry.date (ms UTC), convert to local time
+      const localMbgData = mbgData.map((entry: BloodGlucoseReading) => {
+        const utcDate = new Date(entry.date);
+        const hour = utcDate.getHours() + utcDate.getMinutes() / 60;
+        return {
+          ...entry,
+          timestamp: entry.date,
+          value: entry.mbg || entry.value,
+          type: 'mbg' as const,
+          hour
+        };
       });
-      
-      return {
-        prevDate,
-        selectedDate: dateStr,
-        nextDate
-      };
+
+      const localSgvData = sgvData.map((entry: BloodGlucoseReading) => {
+        const utcDate = new Date(entry.date);
+        const hour = utcDate.getHours() + utcDate.getMinutes() / 60;
+        return {
+          ...entry,
+          timestamp: entry.date,
+          value: entry.sgv || entry.value,
+          type: 'sgv' as const,
+          hour
+        };
+      });
+
+      // Meals: Use meal.created_at (ISO UTC string), convert to local time
+      const localMeals = meals.map((meal: Meal) => {
+        if (!meal.created_at) {
+          return meal;
+        }
+        const utcDate = new Date(meal.created_at);
+        const hour = utcDate.getHours() + utcDate.getMinutes() / 60;
+        return {
+          ...meal,
+          hour
+        };
+      });
+
+      // Analyze data quality
+      const dataQuality = analyzeDataQuality(localMbgData, localSgvData, dateRange);
+
+      // Log data quality metrics
+      if (dataQuality.hasGaps || dataQuality.unusualValues.length > 0 || dataQuality.timezoneIssues.length > 0) {
+        // console.warn('Data quality issues detected:', {
+        //   gaps: dataQuality.gapDetails,
+        //   unusualValues: dataQuality.unusualValues,
+        //   timezoneIssues: dataQuality.timezoneIssues,
+        //   dataDensity: dataQuality.dataDensity
+        // });
+      }
+
+      // Log data summary
+      console.log('Chart data summary:', {
+        dateRange: formatDateRange(dateRange),
+        mbgCount: localMbgData.length,
+        sgvCount: localSgvData.length,
+        mealCount: localMeals.length,
+        dataQuality: {
+          coverage: `${dataQuality.dataDensity.coverage.toFixed(1)}%`,
+          gaps: dataQuality.gapCount,
+          unusualValues: dataQuality.unusualValues.length,
+          timezoneIssues: dataQuality.timezoneIssues.length
+        }
+      });
+
+      // After mapping, log only the first and last SGV points and all MBG points
+      if (localSgvData.length > 0) {
+        const first = localSgvData[0];
+        const last = localSgvData[localSgvData.length - 1];
+        const firstUtc = new Date(first.timestamp);
+        const lastUtc = new Date(last.timestamp);
+        console.log('[SGV] First:', {
+          value: first.value,
+          utc: firstUtc.toISOString(),
+          local: firstUtc.toString()
+        });
+        console.log('[SGV] Last:', {
+          value: last.value,
+          utc: lastUtc.toISOString(),
+          local: lastUtc.toString()
+        });
+      }
+      if (localMbgData.length > 0) {
+        localMbgData.forEach((mbg, i) => {
+          const mbgUtc = new Date(mbg.timestamp);
+          console.log(`[MBG] #${i + 1}:`, {
+            value: mbg.value,
+            utc: mbgUtc.toISOString(),
+            local: mbgUtc.toString()
+          });
+        });
+      }
+
+      setData({
+        mbgData: localMbgData,
+        sgvData: localSgvData,
+        meals: localMeals,
+        dateRange,
+        dataQuality,
+        isLoading: false,
+        error: null
+      });
     } catch (err) {
-      console.error('Error in getDateBoundaries:', err);
-      // Fallback to current date if there's an error
-      const today = format(new Date(), 'yyyy-MM-dd');
-      return {
-        prevDate: today,
-        selectedDate: today,
-        nextDate: today
-      };
+      console.error('Error loading chart data:', err);
+      setData(prev => ({
+        ...prev,
+        isLoading: false,
+        error: err instanceof Error ? err.message : 'Failed to load chart data'
+      }));
     }
-  };
+  }, [selectedDate, config, nightscout]);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!nightscout || !config) {
-        setError('Nightscout client not initialized');
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const { prevDate, selectedDate: dateToFetch, nextDate } = getDateBoundaries(selectedDate);
-        const baseUrl = config.nightscoutUrl.replace(/\/$/, '');
-        const jwt = await getJwtToken();
-        if (!jwt) throw new Error('Failed to get Nightscout JWT token');
-        
-        const headers = {
-          'Authorization': `Bearer ${jwt}`,
-          'Content-Type': 'application/json'
-        };
-
-        // Fetch data for all three days to ensure complete coverage
-        const getUrls = (type: string, field: string) => {
-          return [
-            `${baseUrl}/api/v3/${type}?limit=1000&skip=0&fields=_all&${field}$re=^${prevDate}`,
-            `${baseUrl}/api/v3/${type}?limit=1000&skip=0&fields=_all&${field}$re=^${dateToFetch}`,
-            `${baseUrl}/api/v3/${type}?limit=1000&skip=0&fields=_all&${field}$re=^${nextDate}`
-          ];
-        };
-
-        const mbgUrls = getUrls('entries', 'dateString');
-        const sgvUrls = getUrls('entries', 'dateString');
-        const mealUrls = getUrls('treatments', 'created_at');
-
-        // Fetch all data
-        const [mbgResponses, sgvResponses, mealResponses] = await Promise.all([
-          Promise.all(mbgUrls.map(url => fetch(url, { headers }))),
-          Promise.all(sgvUrls.map(url => fetch(url, { headers }))),
-          Promise.all(mealUrls.map(url => fetch(url, { headers })))
-        ]);
-
-        // Process responses
-        const processResponses = async (responses: Response[], type: string) => {
-          const results = await Promise.all(responses.map(r => r.json()));
-          const allEntries = results.flatMap(r => r.result || []);
-          
-          // Filter to only include entries for the selected date
-          return allEntries.filter(entry => {
-            if (!entry.date) {
-              console.warn('Entry missing date:', entry);
-              return false;
-            }
-            
-            const entryDate = safeParseDate(entry.date);
-            if (!entryDate) {
-              console.warn('Could not parse entry date:', entry.date);
-              return false;
-            }
-            
-            const entryDateStr = format(entryDate, 'yyyy-MM-dd');
-            return entryDateStr === dateToFetch;
-          });
-        };
-
-        const [mbgEntries, sgvEntries, mealEntries] = await Promise.all([
-          processResponses(mbgResponses, 'mbg'),
-          processResponses(sgvResponses, 'sgv'),
-          processResponses(mealResponses, 'meal')
-        ]);
-
-        // Transform data points
-        const mbgChartData = mbgEntries
-          .filter(r => r.type === 'mbg')
-          .map((r: any) => {
-            const date = safeParseDate(r.date);
-            if (!date) {
-              console.warn('Invalid MBG date:', r.date);
-              return null;
-            }
-            return {
-              timestamp: r.date,
-              hour: date.getHours() + date.getMinutes() / 60,
-              value: Math.max(1, r.mbg || r.value),
-              type: 'mbg',
-            };
-          })
-          .filter((point): point is ChartDataPoint => point !== null)
-          .sort((a, b) => a.timestamp - b.timestamp);
-
-        const sgvChartData = sgvEntries
-          .filter(r => r.type === 'sgv')
-          .map((r: any) => {
-            const date = safeParseDate(r.date);
-            if (!date) {
-              console.warn('Invalid SGV date:', r.date);
-              return null;
-            }
-            return {
-              timestamp: r.date,
-              hour: date.getHours() + date.getMinutes() / 60,
-              value: Math.max(1, r.sgv || r.value),
-              type: 'sgv',
-            };
-          })
-          .filter((point): point is ChartDataPoint => point !== null)
-          .sort((a, b) => a.timestamp - b.timestamp);
-
-        const meals = mealEntries
-          .filter(r => r.eventType === 'Meal')
-          .map((r: any): Meal | null => {
-            if (!r.date) {
-              console.warn('[Meal Missing Date]', r);
-              return null;
-            }
-            
-            const timestamp = safeParseDate(r.date);
-            if (!timestamp) {
-              console.warn('Invalid meal date:', r.date);
-              return null;
-            }
-            
-            // Extract food items from notes if available
-            const foodItems = r.notes ? [{
-              id: r._id,
-              name: r.notes.split('\n')[0] || 'Unknown Food',
-              carbs: r.carbs || 0,
-              protein: r.protein || 0,
-              fat: r.fat || 0,
-              notes: r.notes
-            }] : [];
-
-            return {
-              id: r._id,
-              name: r.notes?.split('\n')[0] || 'Meal',
-              timestamp: timestamp.getTime(),
-              carbs: r.carbs || 0,
-              protein: r.protein || 0,
-              fat: r.fat || 0,
-              notes: r.notes || '',
-              foodItems: foodItems,
-              synced: true,
-              nightscoutId: r._id
-            };
-          })
-          .filter((meal): meal is Meal => meal !== null)
-          .sort((a, b) => a.timestamp - b.timestamp);
-
-        setMbgData(mbgChartData);
-        setSgvData(sgvChartData);
-        setMealData(meals);
-
-        // Log some debug info
-        if (sgvEntries.length > 0) {
-          const firstDate = safeParseDate(sgvEntries[0].date);
-          const lastDate = safeParseDate(sgvEntries[sgvEntries.length - 1].date);
-          console.log('SGV date range:', {
-            first: firstDate?.toISOString(),
-            last: lastDate?.toISOString(),
-            count: sgvEntries.length
-          });
-        }
-        if (mbgEntries.length > 0) {
-          const firstDate = safeParseDate(mbgEntries[0].date);
-          const lastDate = safeParseDate(mbgEntries[mbgEntries.length - 1].date);
-          console.log('MBG date range:', {
-            first: firstDate?.toISOString(),
-            last: lastDate?.toISOString(),
-            count: mbgEntries.length
-          });
-        }
-
-      } catch (err) {
-        console.error('Error loading data:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    };
     loadData();
-  }, [nightscout, config, selectedDate]);
-
-  const avgSgv = useMemo(() => {
-    if (!sgvData.length) return 0;
-    const sum = sgvData.reduce((acc, curr) => acc + curr.value, 0);
-    return sum / sgvData.length;
-  }, [sgvData]);
+  }, [loadData]);
 
   return {
-    mbgData,
-    sgvData,
-    mealData,
-    loading,
-    error,
+    ...data,
+    loading: data.isLoading,
     selectedDate,
     setSelectedDate,
     showMBG,
@@ -297,6 +224,6 @@ export function use24HourChartData() {
     setBoundLow,
     boundHigh,
     setBoundHigh,
-    avgSgv,
+    avgSgv
   };
 } 
