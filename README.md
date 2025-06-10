@@ -1,6 +1,6 @@
 # GlucoHub
 
-**GlucoHub** is a modern, private dashboard and data toolkit inspired by Nightscout, designed for people managing diabetes and their care teams. GlucoHub provides advanced visualization, logging, and recovery tools for blood glucose, meals, and activity data, all in a user-friendly, mobile-friendly interface.
+**GlucoHub** provides advanced visualization, logging, and recovery tools for blood glucose, meals, and activity data, all in a user-friendly, mobile-friendly interface. It builds on top of Nightscout, providing additional features and analysis.
 
 ## Core Features
 

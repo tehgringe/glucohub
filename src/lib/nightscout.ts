@@ -1,5 +1,9 @@
 import { FoodEntry, Meal, BloodGlucoseReading, NightscoutConfig } from '../types/nightscout';
 
+interface JwtTokenResponse {
+  token: string;
+}
+
 export class NightscoutClient {
   private baseUrl: string;
   private apiSecret: string;
@@ -19,35 +23,48 @@ export class NightscoutClient {
     return this.apiSecret;
   }
 
-  async getJwtToken(): Promise<string> {
+  private async getJwtToken(): Promise<string> {
+    // Check if we have a valid token
     if (this.jwtToken && this.jwtTokenExpiry && Date.now() < this.jwtTokenExpiry) {
       return this.jwtToken;
     }
 
-    const response = await fetch(
-      `${this.baseUrl}/api/v2/authorization/request/${this.apiSecret}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    // Request new JWT token
+    const url = new URL('/api/v2/authorization/request/' + this.apiSecret, this.baseUrl);
+    
+    console.log('=== Requesting JWT Token ===');
+    console.log('URL:', url.toString());
+    
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
 
     if (!response.ok) {
-      throw new Error('Failed to get JWT token');
+      const errorText = await response.text();
+      console.error('JWT token request failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        response: errorText
+      });
+      throw new Error(`Failed to get JWT token: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    if (!data.token || typeof data.token !== 'string') {
-      throw new Error('Invalid JWT token received');
+    const data = await response.json() as JwtTokenResponse;
+    if (!data.token) {
+      throw new Error('Invalid JWT token received from server');
     }
     
-    const token: string = data.token;
-    this.jwtToken = token;
-    // Set token expiry to 50 minutes (giving 10-minute buffer)
-    this.jwtTokenExpiry = Date.now() + 50 * 60 * 1000;
-    return token;
+    this.jwtToken = data.token;
+    // Set token expiry to 50 minutes (giving 10-minute buffer before 1-hour expiry)
+    this.jwtTokenExpiry = Date.now() + (50 * 60 * 1000);
+    
+    console.log('=== JWT Token Received ===');
+    console.log('Token expiry:', new Date(this.jwtTokenExpiry).toISOString());
+    
+    return this.jwtToken;
   }
 
   private async fetchWithAuth(endpoint: string, options: RequestInit = {}) {
@@ -55,13 +72,22 @@ export class NightscoutClient {
       ? new URL(endpoint)
       : new URL(endpoint, this.baseUrl);
     
-    url.searchParams.append('token', this.apiSecret);
+    // For API v1 endpoints, use token as query parameter
+    if (endpoint.startsWith('/api/v1/')) {
+      url.searchParams.append('token', this.apiSecret);
+    }
 
-    const headers = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string> || {}),
     };
+
+    // For API v3 endpoints, use JWT token in Authorization header
+    if (endpoint.startsWith('/api/v3/')) {
+      const jwtToken = await this.getJwtToken();
+      headers['Authorization'] = `Bearer ${jwtToken}`;
+    }
 
     // Enhanced request debugging
     console.log('=== Nightscout API Request ===');
