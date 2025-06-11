@@ -96,6 +96,25 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
         enabled: true,
         timezone: timezoneConfig
       });
+
+      // Quick API v3 status check using the access token
+      try {
+        const statusUrl = url.trim().replace(/\/$/, '') + '/api/v3/treatments?count=1';
+        const resp = await fetch(statusUrl, {
+          headers: {
+            'Authorization': `Bearer ${accessToken.trim()}`
+          }
+        });
+        if (resp.ok) {
+          alert('✅ Nightscout API v3 connection successful!');
+        } else {
+          const error = await resp.json().catch(() => ({}));
+          alert('❌ Nightscout API v3 connection failed: ' + (error.message || resp.status));
+        }
+      } catch (err) {
+        alert('❌ Nightscout API v3 connection failed: ' + (err instanceof Error ? err.message : err));
+      }
+
       onSave();
     } catch (err) {
       console.error('Settings error:', err);
