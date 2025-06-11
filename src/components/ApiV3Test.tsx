@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNightscout } from '../contexts/NightscoutContext';
+import { testNightscoutApiV3Status } from '../lib/nightscout';
 
 interface ApiResponse {
   status: number;
@@ -28,7 +29,7 @@ const COLLECTIONS = [
 type Collection = typeof COLLECTIONS[number];
 
 const ApiV3Test: React.FC = () => {
-  const { nightscout } = useNightscout();
+  const { nightscout, config } = useNightscout();
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [statusResponse, setStatusResponse] = useState<ApiResponse | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<Collection>('treatments');
@@ -107,32 +108,12 @@ const ApiV3Test: React.FC = () => {
     setStatusResponse(null);
 
     try {
-      // Ensure we have a valid token
-      const token = jwtToken || await refreshJwtToken();
-      if (!token) {
-        throw new Error('Failed to get JWT token');
-      }
-
-      // Construct the API request URL
-      const baseUrl = nightscout.getBaseUrl();
-      const url = `${baseUrl}/api/v3/status`;
-      console.log('Making API v3 request to:', url);
-
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      console.log('API v3 status response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch status');
-      }
-
-      setStatusResponse(data);
+      // Use config for baseUrl and accessToken
+      if (!config) throw new Error('Nightscout config not initialized');
+      const baseUrl = config.baseUrl;
+      const accessToken = config.accessToken;
+      const status = await testNightscoutApiV3Status(baseUrl, accessToken);
+      setStatusResponse(status);
     } catch (err) {
       console.error('Error fetching status:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');

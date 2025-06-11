@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNightscout } from '../contexts/NightscoutContext';
 import { NightscoutConfig } from '../types/nightscout';
+import { testNightscoutApiV3Status } from '../lib/nightscout';
 
 interface SettingsProps {
   onSave: () => void;
@@ -18,6 +19,7 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
   const [manualOffset, setManualOffset] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [apiCheckResult, setApiCheckResult] = useState<null | { success: boolean; message: string }>(null);
 
   // Get list of common timezones
   const timezones = Intl.supportedValuesOf('timeZone').sort();
@@ -38,9 +40,10 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Settings form submitted');
+    console.log('handleSubmit called');
     setError(null);
     setLoading(true);
+    setApiCheckResult(null);
 
     try {
       // Validate URL
@@ -99,20 +102,14 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
 
       // Quick API v3 status check using the access token
       try {
-        const statusUrl = url.trim().replace(/\/$/, '') + '/api/v3/treatments?count=1';
-        const resp = await fetch(statusUrl, {
-          headers: {
-            'Authorization': `Bearer ${accessToken.trim()}`
-          }
-        });
-        if (resp.ok) {
-          alert('✅ Nightscout API v3 connection successful!');
-        } else {
-          const error = await resp.json().catch(() => ({}));
-          alert('❌ Nightscout API v3 connection failed: ' + (error.message || resp.status));
-        }
+        const status = await testNightscoutApiV3Status(url.trim(), accessToken.trim());
+        console.debug('[Settings] Nightscout API v3 status response:', status);
+        setApiCheckResult({ success: true, message: 'Nightscout API v3 status: ' + JSON.stringify(status) });
+        console.debug('[Settings] apiCheckResult set to success');
       } catch (err) {
-        alert('❌ Nightscout API v3 connection failed: ' + (err instanceof Error ? err.message : err));
+        console.error('[Settings] Nightscout API v3 connection failed:', err);
+        setApiCheckResult({ success: false, message: 'Nightscout API v3 connection failed: ' + (err instanceof Error ? err.message : err) });
+        console.debug('[Settings] apiCheckResult set to failure');
       }
 
       onSave();
@@ -131,6 +128,9 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
     }
     // ...rest of your code
   };
+
+  // Debug: Log apiCheckResult on every render
+  console.debug('[Settings] Rendering, apiCheckResult:', apiCheckResult);
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
@@ -269,7 +269,64 @@ export const Settings: React.FC<SettingsProps> = ({ onSave }) => {
                       {loading ? 'Saving...' : 'Save Settings'}
                     </button>
                   </div>
+                  <div>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 mt-2"
+                      onClick={async () => {
+                        setError(null);
+                        setLoading(true);
+                        setApiCheckResult(null);
+                        try {
+                          const urlObj = new URL(url.trim());
+                          if (!urlObj.protocol.startsWith('http')) {
+                            throw new Error('URL must start with http:// or https://');
+                          }
+                          if (!accessToken.trim()) {
+                            throw new Error('Access Token is required for API v3');
+                          }
+                          const status = await testNightscoutApiV3Status(url.trim(), accessToken.trim());
+                          setApiCheckResult({ success: true, message: 'Nightscout API v3 status: ' + JSON.stringify(status) });
+                        } catch (err) {
+                          setApiCheckResult({ success: false, message: 'Nightscout API v3 connection failed: ' + (err instanceof Error ? err.message : err) });
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      {loading ? 'Testing...' : 'Test API Connection'}
+                    </button>
+                  </div>
                 </form>
+                {apiCheckResult && (
+                  <div
+                    style={{
+                      marginTop: 16,
+                      padding: 12,
+                      borderRadius: 6,
+                      color: apiCheckResult.success ? '#166534' : '#b91c1c',
+                      background: apiCheckResult.success ? '#dcfce7' : '#fee2e2',
+                      border: `1px solid ${apiCheckResult.success ? '#22c55e' : '#ef4444'}`,
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                      fontSize: 14,
+                      overflowX: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      maxHeight: 240,
+                    }}
+                  >
+                    {(() => {
+                      // Try to pretty-print JSON if possible
+                      try {
+                        const parsed = JSON.parse(apiCheckResult.message.replace(/^Nightscout API v3 status: /, ''));
+                        return <pre style={{margin: 0}}>{JSON.stringify(parsed, null, 2)}</pre>;
+                      } catch {
+                        return <span>{apiCheckResult.message}</span>;
+                      }
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>

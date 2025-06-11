@@ -11,16 +11,16 @@ import XdripDbAnalyzer from './components/XdripDbAnalyzer';
 import DataRecovery from './components/DataRecovery';
 import DataFix from './components/DataFix';
 import { Charts } from './components/Charts';
-import { ConfigForm } from './components/ConfigForm';
+import { Settings } from './components/Settings';
 import DataRecoveryToolkit from './components/DataRecoveryToolkit';
 import { Drawer, List, ListItem, ListItemText, Collapse, ListSubheader, Toolbar, Box, Divider } from '@mui/material';
-import { ExpandLess, ExpandMore, Timeline, Radar, Restaurant, Settings, Science, BarChart, ListAlt, Build, Storage, BugReport, Assignment, Fastfood, MenuBook } from '@mui/icons-material';
-import glucohubLogo from './assets/glucohub_logo_small.png';
+import { ExpandLess, ExpandMore, Timeline, Radar, Restaurant, Settings as MuiSettings, Science, BarChart, ListAlt, Build, Storage, BugReport, Assignment, Fastfood, MenuBook } from '@mui/icons-material';
+import glucohubLogo from './../public/glucohub_logo_small.png';
 
 const drawerWidth = 260;
 
 // Helper for NavLink className
-const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'Mui-selected' : undefined);
+const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'Mui-selected' : '');
 
 function SidebarNav() {
   const [open, setOpen] = useState({
@@ -134,14 +134,14 @@ function SidebarNav() {
         </Collapse>
         {/* Settings */}
         <ListItem component="div" onClick={() => handleToggle('settings')}>
-          <Settings sx={{ mr: 2 }} />
+          <MuiSettings sx={{ mr: 2 }} />
           <ListItemText primary="Settings" />
           {open.settings ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.settings} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
             <ListItem button component={NavLink} to="/config" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
-              <Settings sx={{ mr: 1 }} fontSize="small" />
+              <MuiSettings sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Configuration" />
             </ListItem>
           </List>
@@ -167,7 +167,7 @@ function AppLayout() {
           <Route path="/xdrip-db" element={<XdripDbAnalyzer />} />
           <Route path="/data-recovery" element={<DataRecoveryToolkit />} />
           <Route path="/data-fix" element={<DataFix />} />
-          <Route path="/config" element={<ConfigForm />} />
+          <Route path="/config" element={<Settings onSave={() => {}} />} />
         </Routes>
       </Box>
     </Box>

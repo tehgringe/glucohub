@@ -721,4 +721,26 @@ export class NightscoutClient {
     // console.log('Processed meals:', meals);
     return meals;
   }
+}
+
+export async function testNightscoutApiV3Status(baseUrl: string, accessToken: string): Promise<any> {
+  // Step 1: Get JWT
+  const jwtUrl = baseUrl.replace(/\/$/, '') + '/api/v2/authorization/request/' + accessToken;
+  const jwtResp = await fetch(jwtUrl, { method: 'GET', headers: { 'Accept': 'application/json' } });
+  if (!jwtResp.ok) throw new Error('Failed to get JWT: ' + jwtResp.statusText);
+  const jwtData = await jwtResp.json();
+  if (!jwtData.token) throw new Error('No JWT token received');
+  const jwt = jwtData.token;
+
+  // Step 2: Use JWT for API v3 status
+  const url = baseUrl.replace(/\/$/, '') + '/api/v3/status';
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${jwt}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch status');
+  return data;
 } 
