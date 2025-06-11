@@ -1,36 +1,9 @@
-import { format, addDays, subDays, parseISO, startOfDay, endOfDay, addHours, subHours, addMinutes, isWithinInterval, differenceInDays } from 'date-fns';
-import { formatInTimeZone, toZonedTime, getTimezoneOffset as getTzOffset } from 'date-fns-tz';
+import { fromZonedTime, getTimezoneOffset } from 'date-fns-tz';
+import { startOfDay, endOfDay, differenceInDays, format } from 'date-fns';
 import { NightscoutConfig } from '../types/nightscout';
 
-// Constants for validation
-const MAX_TIMEZONE_OFFSET = 14 * 60; // 14 hours in minutes
-const MIN_TIMEZONE_OFFSET = -12 * 60; // -12 hours in minutes
-const MAX_FETCH_DAYS = 3; // Maximum days to fetch for any timezone
-const MIN_DATA_POINTS = 24; // Minimum data points expected per day
-
-export interface DateRange {
-  start: Date;
-  end: Date;
-  // The date in local time that this range represents
-  localDate: Date;
-  // The timezone offset in minutes
-  timezoneOffset: number;
-}
-
-export interface ChartDateRange extends DateRange {
-  // The date range to fetch from Nightscout (may be wider than start/end to account for timezone)
-  fetchRange: {
-    start: Date;
-    end: Date;
-  };
-  // Additional metadata for validation
-  metadata: {
-    isDSTTransition: boolean;
-    daysToFetch: number;
-    expectedDataPoints: number;
-    timezoneName: string;
-  };
-}
+const MAX_FETCH_DAYS = 2;
+const MIN_DATA_POINTS = 24;
 
 export interface DataQualityMetrics {
   hasGaps: boolean;
@@ -57,155 +30,76 @@ export interface DataQualityMetrics {
   };
 }
 
-/**
- * Get a safe timezone offset, with validation and fallbacks
- */
-export function getSafeTimezoneOffset(config: NightscoutConfig | null): number {
-  try {
-    if (!config?.timezone) {
-      return new Date().getTimezoneOffset();
-    }
-
-    if (config.timezone.useBrowserTimezone) {
-      const browserOffset = new Date().getTimezoneOffset();
-      if (isValidTimezoneOffset(browserOffset)) {
-        return browserOffset;
-      }
-      // console.warn('Invalid browser timezone offset, using fallback');
-      return 0; // Fallback to UTC
-    }
-
-    const manualOffset = config.timezone.manualOffset;
-    if (manualOffset === undefined || !isValidTimezoneOffset(manualOffset)) {
-      // console.warn('Invalid manual timezone offset, using fallback');
-      return 0; // Fallback to UTC
-    }
-
-    return manualOffset;
-  } catch (err) {
-    // console.error('Error getting timezone offset:', err);
-    return 0; // Fallback to UTC
-  }
+export interface DateRange {
+  start: Date;
+  end: Date;
+  localDate: Date;
+  timezoneOffset: number;
 }
 
-/**
- * Validate a timezone offset
- */
-function isValidTimezoneOffset(offset: number): boolean {
-  return offset >= MIN_TIMEZONE_OFFSET && 
-         offset <= MAX_TIMEZONE_OFFSET && 
-         Number.isInteger(offset);
-}
-
-/**
- * Check if a date range includes a DST transition
- */
-function hasDSTTransition(start: Date, end: Date, timezone: string): boolean {
-  try {
-    // getTzOffset(timezone, date) - timezone is first parameter
-    const startOffset = getTzOffset(timezone, start);
-    const endOffset = getTzOffset(timezone, end);
-    return startOffset !== endOffset;
-  } catch (err) {
-    // console.warn('Error checking DST transition:', err);
-    return false;
-  }
-}
-
-/**
- * Calculate the number of days needed to fetch based on timezone
- */
-function calculateFetchDays(timezoneOffset: number): number {
-  const offsetHours = Math.abs(timezoneOffset) / 60;
-  // Add extra days for large timezone offsets
-  return Math.min(MAX_FETCH_DAYS, Math.ceil(offsetHours / 12) + 1);
-}
-
-/**
- * Validate a chart date range
- */
-export function validateDateRange(range: ChartDateRange): {
-  isValid: boolean;
-  issues: string[];
-} {
-  const issues: string[] = [];
-
-  // Check date validity
-  if (isNaN(range.start.getTime()) || isNaN(range.end.getTime())) {
-    issues.push('Invalid date range: dates are not valid');
-  }
-
-  // Check timezone offset
-  if (!isValidTimezoneOffset(range.timezoneOffset)) {
-    issues.push(`Invalid timezone offset: ${range.timezoneOffset}`);
-  }
-
-  // Check fetch range
-  const fetchDays = differenceInDays(range.fetchRange.end, range.fetchRange.start);
-  if (fetchDays > MAX_FETCH_DAYS) {
-    issues.push(`Fetch range too large: ${fetchDays} days`);
-  }
-
-  // Check DST transition
-  if (range.metadata.isDSTTransition) {
-    issues.push('Date range includes DST transition');
-  }
-
-  return {
-    isValid: issues.length === 0,
-    issues
+export interface ChartDateRange extends DateRange {
+  fetchRange: {
+    start: Date;
+    end: Date;
+  };
+  metadata: {
+    isDSTTransition: boolean;
+    daysToFetch: number;
+    expectedDataPoints: number;
+    timezoneName: string;
   };
 }
 
-/**
- * Get the YYYY-MM-DD string for a local date (for API filtering)
- */
+function isValidTimezoneOffset(offset: number): boolean {
+  return offset >= -720 && offset <= 840 && Number.isInteger(offset);
+}
+
+function getSafeTimezoneOffset(config: NightscoutConfig | null): number {
+  if (!config?.timezone) return new Date().getTimezoneOffset();
+
+  if (config.timezone.useBrowserTimezone) {
+    const offset = new Date().getTimezoneOffset();
+    return isValidTimezoneOffset(offset) ? offset : 0;
+  }
+
+  const manualOffset = config.timezone.manualOffset ?? 0;
+  return isValidTimezoneOffset(manualOffset) ? manualOffset : 0;
+}
+
+function hasDSTTransition(start: Date, end: Date, timezone: string): boolean {
+  const startOffset = getTimezoneOffset(timezone, start);
+  const endOffset = getTimezoneOffset(timezone, end);
+  return startOffset !== endOffset;
+}
+
 export function getLocalDateString(date: Date): string {
-  // Always use the local date, not UTC
   return format(date, 'yyyy-MM-dd');
 }
 
-/**
- * Get the date range for a chart, with enhanced validation and safety checks
- */
 export function getChartDateRange(dateStr: string, config: NightscoutConfig | null): ChartDateRange {
-  // Get safe timezone offset
-  const timezoneOffset = getSafeTimezoneOffset(config);
-  console.log('[DEBUG] getChartDateRange timezoneOffset:', timezoneOffset);
   const timezoneName = config?.timezone?.name || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
-  // Parse the selected date in local time
-  const localDate = parseISO(dateStr);
-  if (isNaN(localDate.getTime())) {
-    throw new Error(`Invalid date string: ${dateStr}`);
-  }
-  
-  // Calculate the start and end of the local day
-  const localStart = startOfDay(localDate);
-  const localEnd = endOfDay(localDate);
-  
-  // Convert to UTC by ADDING the timezone offset (in minutes)
-  const utcStart = addMinutes(localStart, timezoneOffset);
-  const utcEnd = addMinutes(localEnd, timezoneOffset);
 
-  // For most timezones, fetch window is just the UTC-mapped local day
-  // Only widen if offset is extreme (e.g., >12 hours)
-  let fetchStart = utcStart;
-  let fetchEnd = utcEnd;
-  let daysToFetch = 1;
-  if (Math.abs(timezoneOffset) > 12 * 60) {
-    // For UTC+13/14 or UTC-12, widen by 1 day on each side
-    fetchStart = subDays(utcStart, 1);
-    fetchEnd = addDays(utcEnd, 1);
-    daysToFetch = 3;
-  }
+  // Step 1: Convert 'dateStr' + times into UTC Date using actual TZ logic
+  const utcStart = fromZonedTime(`${dateStr}T00:00:00`, timezoneName);
+  const utcEnd = fromZonedTime(`${dateStr}T23:59:59.999`, timezoneName);
 
-  // Check for DST transition
+  // Step 2: Calculate timezone offset for metadata
+  const timezoneOffset = getTimezoneOffset(timezoneName, utcStart);
+
+  // Step 3: Create fetch window in UTC (span full UTC days)
+  const fetchStart = startOfDay(utcStart);
+  const fetchEnd = endOfDay(utcEnd);
+  const daysToFetch = differenceInDays(fetchEnd, fetchStart) + 1;
+
+  // Step 4: Check DST
   const isDSTTransition = hasDSTTransition(fetchStart, fetchEnd, timezoneName);
 
+  // Step 5: Build the full ChartDateRange object
+  const localDate = new Date(dateStr);
+
   const range: ChartDateRange = {
-    start: localStart,
-    end: localEnd,
+    start: utcStart,
+    end: utcEnd,
     localDate,
     timezoneOffset,
     fetchRange: {
@@ -220,14 +114,7 @@ export function getChartDateRange(dateStr: string, config: NightscoutConfig | nu
     }
   };
 
-  // Attach the local date string for filtering
   (range as any).localDateString = getLocalDateString(localDate);
-
-  // Validate the range
-  const { isValid, issues } = validateDateRange(range);
-  if (!isValid) {
-    // console.warn('Date range validation issues:', issues);
-  }
 
   return range;
 }
