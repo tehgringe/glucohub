@@ -47,7 +47,11 @@ module.exports = {
       {
         test: /\.wasm$/,
         type: "asset/resource"
-      }
+      },
+      {
+        test: /\.(png|jpe?g|gif|svg)$/i,
+        type: 'asset/resource',
+      },
     ]
   },
   plugins: [

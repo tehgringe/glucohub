@@ -15,6 +15,7 @@ import { ConfigForm } from './components/ConfigForm';
 import DataRecoveryToolkit from './components/DataRecoveryToolkit';
 import { Drawer, List, ListItem, ListItemText, Collapse, ListSubheader, Toolbar, Box, Divider } from '@mui/material';
 import { ExpandLess, ExpandMore, Timeline, Radar, Restaurant, Settings, Science, BarChart, ListAlt, Build, Storage, BugReport, Assignment, Fastfood, MenuBook } from '@mui/icons-material';
+import glucohubLogo from './assets/glucohub_logo_small.png';
 
 const drawerWidth = 260;
 
@@ -42,7 +43,7 @@ function SidebarNav() {
     >
       <Toolbar>
         <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
-          <img src="/glucohub_logo_small.png" alt="GlucoHub Logo" style={{ height: 120, width: 120, borderRadius: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }} />
+          <img src={glucohubLogo} alt="GlucoHub Logo" style={{ height: 120, width: 120, borderRadius: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }} />
         </Box>
       </Toolbar>
       <Divider />
