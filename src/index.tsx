@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { NightscoutProvider } from './contexts/NightscoutContext';
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 // All debug logging suppressed as per request
 

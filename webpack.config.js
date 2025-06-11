@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: './src/index.tsx',
@@ -45,7 +46,7 @@ module.exports = {
       },
       {
         test: /\.wasm$/,
-        type: "webassembly/async"
+        type: "asset/resource"
       }
     ]
   },
@@ -60,6 +61,14 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       'process.env': JSON.stringify(process.env)
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'node_modules/sql.js/dist/sql-wasm.wasm',
+          to: 'sql-wasm.wasm'
+        }
+      ]
     })
   ],
   experiments: {
@@ -72,6 +81,10 @@ module.exports = {
     compress: true,
     port: 3000,
     historyApiFallback: true,
-    hot: true
+    hot: true,
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin'
+    }
   }
 }; 

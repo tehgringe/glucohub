@@ -261,9 +261,19 @@ export class NightscoutClient {
       throw new Error('Cannot update meal: Missing Nightscout ID');
     }
 
-    // All debug logging suppressed as per request
-    // console.log('Updating meal:', meal);
-    
+    // Step 1: Delete the existing treatment
+    try {
+      console.debug('[Nightscout] updateMeal: Deleting old treatment', meal.nightscoutId);
+      await this.fetchWithAuth(`/api/v3/treatments/${meal.nightscoutId}`, {
+        method: 'DELETE',
+      });
+      console.debug('[Nightscout] updateMeal: Old treatment deleted');
+    } catch (deleteError) {
+      console.error('[Nightscout] updateMeal: Error deleting old treatment', deleteError);
+      throw deleteError;
+    }
+
+    // Step 2: Create a new treatment with updated data
     const treatment = {
       eventType: 'Meal',
       carbs: meal.carbs,
@@ -277,27 +287,27 @@ export class NightscoutClient {
       source: 'glucohub' // Add source field for better tracking
     };
 
-    // All debug logging suppressed as per request
-    // console.log('Updating meal with data:', treatment);
-    const result = await this.fetchWithAuth(`/api/v3/treatments/${meal.nightscoutId}`, {
-      method: 'PUT',
-      body: JSON.stringify(treatment),
-    });
-
-    // All debug logging suppressed as per request
-    // console.log('Update meal response:', result);
-
-    if (!result || !result.identifier) {
-      throw new Error('Failed to update meal: Invalid response from server');
+    console.debug('[Nightscout] updateMeal: Creating new treatment', treatment);
+    try {
+      const result = await this.fetchWithAuth('/api/v3/treatments', {
+        method: 'POST',
+        body: JSON.stringify(treatment),
+      });
+      console.debug('[Nightscout] updateMeal: New treatment created', result);
+      if (!result || !result.identifier) {
+        throw new Error('Failed to create updated meal: Invalid response from server');
+      }
+      return {
+        ...meal,
+        id: result.identifier,
+        timestamp: meal.timestamp,
+        synced: true,
+        nightscoutId: result.identifier
+      };
+    } catch (createError) {
+      console.error('[Nightscout] updateMeal: Error creating new treatment', createError);
+      throw createError;
     }
-
-    return {
-      ...meal,
-      id: result.identifier,
-      timestamp: meal.timestamp,
-      synced: true,
-      nightscoutId: result.identifier
-    };
   }
 
   async deleteMeal(id: string): Promise<void> {
