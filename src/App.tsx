@@ -42,7 +42,7 @@ function SidebarNav() {
     >
       <Toolbar>
         <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
-          <img src="/GlucoHub_logo.png" alt="GlucoHub Logo" style={{ height: 120, width: 120, borderRadius: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }} />
+          <img src="/glucohub_logo_small.png" alt="GlucoHub Logo" style={{ height: 120, width: 120, borderRadius: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }} />
         </Box>
       </Toolbar>
       <Divider />
