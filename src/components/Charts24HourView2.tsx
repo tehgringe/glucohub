@@ -126,42 +126,6 @@ export const Charts24HourView2: React.FC = () => {
     []
   );
 
-  type ActivityType = 'meal' | 'mbg';
-  type ActivityItem = { type: ActivityType; data: any };
-  type ActivityBins = { [key: string]: ActivityItem[] };
-  const groupActivities = (): ActivityBins => {
-    const bins: ActivityBins = {};
-    const getBinKey = (date: Date): string => {
-      if (!(date instanceof Date) || isNaN(date.getTime())) {
-        // Defensive: fallback or skip
-        return 'invalid';
-      }
-      return format(date, 'HH:mm');
-    };
-    meals.forEach((meal) => {
-      const date = meal.created_at ? new Date(meal.created_at) : null;
-      if (!date || isNaN(date.getTime())) {
-        console.warn('[groupActivities] Invalid created_at for meal:', meal);
-        return;
-      }
-      const binKey = getBinKey(date);
-      if (!bins[binKey]) bins[binKey] = [];
-      bins[binKey].push({ type: 'meal', data: meal });
-    });
-    mbgData.forEach((mbg) => {
-      const date = mbg.timestamp ? new Date(mbg.timestamp) : null;
-      if (!date || isNaN(date.getTime())) {
-        console.warn('[groupActivities] Invalid timestamp for MBG:', mbg);
-        return;
-      }
-      const binKey = getBinKey(date);
-      if (!bins[binKey]) bins[binKey] = [];
-      bins[binKey].push({ type: 'mbg', data: mbg });
-    });
-    return bins;
-  };
-  const activityBins = useMemo(() => groupActivities(), [meals, mbgData]);
-
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
 
@@ -258,6 +222,14 @@ export const Charts24HourView2: React.FC = () => {
             rx={6}
           />
           <ChartAxes xScale={xScale} yScale={yScale} width={width} height={height} margin={margin} yTicks={yTicks} xHours={xHours} palette={palette} />
+          <ChartMacroBars
+            mealData={meals}
+            xScale={xScale}
+            yScale={yScale}
+            macroColors={macroColors}
+            showMealTooltip={showMealTooltip}
+            hideMealTooltip={hideMealTooltip}
+          />
           {showSGV &&
             sgvData.map((d, i) => {
               let color = palette.primary;
@@ -273,8 +245,8 @@ export const Charts24HourView2: React.FC = () => {
                   onMouseEnter={event => {
                     showTooltip({
                       tooltipData: d,
-                      tooltipLeft: event.clientX - 50,
-                      tooltipTop: event.clientY - 50,
+                      tooltipLeft: event.clientX + 10,
+                      tooltipTop: event.clientY + 10,
                     });
                   }}
                   onMouseLeave={hideTooltip}
@@ -292,8 +264,8 @@ export const Charts24HourView2: React.FC = () => {
                 onMouseEnter={event => {
                   showTooltip({
                     tooltipData: d,
-                    tooltipLeft: event.clientX - 50,
-                    tooltipTop: event.clientY - 50,
+                    tooltipLeft: event.clientX + 10,
+                    tooltipTop: event.clientY + 10,
                   });
                 }}
                 onMouseLeave={hideTooltip}
@@ -310,15 +282,24 @@ export const Charts24HourView2: React.FC = () => {
               strokeDasharray="4,4"
             />
           )}
-          <ChartMacroBars
-            mealData={meals}
-            xScale={xScale}
-            yScale={yScale}
-            macroColors={macroColors}
-            showMealTooltip={showMealTooltip}
-            hideMealTooltip={hideMealTooltip}
-          />
         </Group>
+      </svg>
+      <svg width={width} height={ACTIVITY_LANES.length * laneHeight + 8} style={{ display: 'block', marginLeft: 0 }}>
+        <ChartActivityBand
+          activities={[
+            ...meals.map(meal => ({ type: 'meal', data: meal })),
+            ...mbgData.map(mbg => ({ type: 'mbg', data: mbg })),
+          ]}
+          xScale={xScale}
+          height={4} // top padding for icons
+          laneHeight={laneHeight}
+          iconHeight={iconHeight}
+          ACTIVITY_LANES={ACTIVITY_LANES}
+          palette={palette}
+          macroColors={macroColors}
+          showMealTooltip={showMealTooltip}
+          hideMealTooltip={hideMealTooltip}
+        />
       </svg>
       <ChartTooltips
         tooltipOpen={tooltipOpen}

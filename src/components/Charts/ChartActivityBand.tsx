@@ -75,7 +75,11 @@ export const ChartActivityBand: React.FC<ActivityBandProps> = ({
             height={22}
             style={{ overflow: 'visible' }}
             onMouseMove={event => {
-              showMealTooltip({ tooltipData: [meal], tooltipLeft: x, tooltipTop: y - 24 });
+              showMealTooltip({
+                tooltipData: [meal],
+                tooltipLeft: event.clientX + 10,
+                tooltipTop: event.clientY + 10,
+              });
             }}
             onMouseLeave={hideMealTooltip}
           >
@@ -111,7 +115,11 @@ export const ChartActivityBand: React.FC<ActivityBandProps> = ({
             height={22}
             style={{ overflow: 'visible' }}
             onMouseMove={event => {
-              showMealTooltip({ tooltipData: [mbg], tooltipLeft: x, tooltipTop: y - 24 });
+              showMealTooltip({
+                tooltipData: [mbg],
+                tooltipLeft: event.clientX + 10,
+                tooltipTop: event.clientY + 10,
+              });
             }}
             onMouseLeave={hideMealTooltip}
           >
