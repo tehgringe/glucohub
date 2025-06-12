@@ -3,6 +3,7 @@ import { Meal, BloodGlucoseReading } from '../../types/nightscout';
 import { scaleLinear } from '@visx/scale';
 import { Group } from '@visx/group';
 import { TooltipWithBounds, useTooltip, defaultStyles } from '@visx/tooltip';
+import { ResponsiveMainContent } from '../ResponsiveMainContent';
 
 // Utility: compute energy in kJ
 function calcEnergyKJ(carbs: number, protein: number, fat: number) {
@@ -78,45 +79,47 @@ export const BubbleChart: React.FC<BubbleChartProps> = ({ meals, sgvData, width 
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<any>();
 
   return (
-    <div style={{ position: 'relative' }}>
-      <svg width={width} height={height} style={{ background: '#f8fafc', borderRadius: 12 }}>
-        <Group>
-          {/* Axes */}
-          <line x1={60} y1={height - 60} x2={width - 40} y2={height - 60} stroke="#bbb" strokeWidth={1.5} />
-          <line x1={60} y1={height - 60} x2={60} y2={40} stroke="#bbb" strokeWidth={1.5} />
-          {/* Axis labels */}
-          <text x={width / 2} y={height - 20} textAnchor="middle" fontSize={15} fill="#333">% Carbs</text>
-          <text x={20} y={height / 2} textAnchor="middle" fontSize={15} fill="#333" transform={`rotate(-90, 20, ${height / 2})`}>Peak BG (mg/dL)</text>
-          {/* Bubbles */}
-          {chartData.map((d, i) => (
-            <circle
-              key={i}
-              cx={xScale(d.pctCarbs)}
-              cy={yScale(d.peak ?? 0)}
-              r={sizeScale(d.energy)}
-              fill={colorScale(d.pctProtein)}
-              fillOpacity={0.7}
-              stroke="#7ED6A5"
-              strokeWidth={1.5}
-              onMouseMove={e => showTooltip({ tooltipData: d, tooltipLeft: xScale(d.pctCarbs) + 10, tooltipTop: yScale(d.peak ?? 0) - 10 })}
-              onMouseLeave={hideTooltip}
-              style={{ cursor: 'pointer' }}
-            />
-          ))}
-        </Group>
-      </svg>
-      {tooltipOpen && tooltipData && (
-        <TooltipWithBounds top={tooltipTop} left={tooltipLeft} style={{ ...defaultStyles, fontSize: 14, zIndex: 10 }}>
-          <div><strong>{tooltipData.meal.name}</strong></div>
-          <div>Carbs: {tooltipData.meal.carbs}g ({Math.round(tooltipData.pctCarbs * 100)}%)</div>
-          <div>Protein: {tooltipData.meal.protein}g ({Math.round(tooltipData.pctProtein * 100)}%)</div>
-          <div>Fat: {tooltipData.meal.fat}g ({Math.round(tooltipData.pctFat * 100)}%)</div>
-          <div>Energy: {tooltipData.energy} kJ</div>
-          <div>Peak BG: {tooltipData.peak} mg/dL</div>
-          <div>Time to Peak: {tooltipData.timeToPeak ? tooltipData.timeToPeak.toFixed(0) : 'N/A'} min</div>
-          <div>AUC: {tooltipData.auc ? tooltipData.auc.toFixed(0) : 'N/A'}</div>
-        </TooltipWithBounds>
-      )}
-    </div>
+    <ResponsiveMainContent>
+      <div style={{ position: 'relative' }}>
+        <svg width={width} height={height} style={{ background: '#f8fafc', borderRadius: 12 }}>
+          <Group>
+            {/* Axes */}
+            <line x1={60} y1={height - 60} x2={width - 40} y2={height - 60} stroke="#bbb" strokeWidth={1.5} />
+            <line x1={60} y1={height - 60} x2={60} y2={40} stroke="#bbb" strokeWidth={1.5} />
+            {/* Axis labels */}
+            <text x={width / 2} y={height - 20} textAnchor="middle" fontSize={15} fill="#333">% Carbs</text>
+            <text x={20} y={height / 2} textAnchor="middle" fontSize={15} fill="#333" transform={`rotate(-90, 20, ${height / 2})`}>Peak BG (mg/dL)</text>
+            {/* Bubbles */}
+            {chartData.map((d, i) => (
+              <circle
+                key={i}
+                cx={xScale(d.pctCarbs)}
+                cy={yScale(d.peak ?? 0)}
+                r={sizeScale(d.energy)}
+                fill={colorScale(d.pctProtein)}
+                fillOpacity={0.7}
+                stroke="#7ED6A5"
+                strokeWidth={1.5}
+                onMouseMove={e => showTooltip({ tooltipData: d, tooltipLeft: xScale(d.pctCarbs) + 10, tooltipTop: yScale(d.peak ?? 0) - 10 })}
+                onMouseLeave={hideTooltip}
+                style={{ cursor: 'pointer' }}
+              />
+            ))}
+          </Group>
+        </svg>
+        {tooltipOpen && tooltipData && (
+          <TooltipWithBounds top={tooltipTop} left={tooltipLeft} style={{ ...defaultStyles, fontSize: 14, zIndex: 10 }}>
+            <div><strong>{tooltipData.meal.name}</strong></div>
+            <div>Carbs: {tooltipData.meal.carbs}g ({Math.round(tooltipData.pctCarbs * 100)}%)</div>
+            <div>Protein: {tooltipData.meal.protein}g ({Math.round(tooltipData.pctProtein * 100)}%)</div>
+            <div>Fat: {tooltipData.meal.fat}g ({Math.round(tooltipData.pctFat * 100)}%)</div>
+            <div>Energy: {tooltipData.energy} kJ</div>
+            <div>Peak BG: {tooltipData.peak} mg/dL</div>
+            <div>Time to Peak: {tooltipData.timeToPeak ? tooltipData.timeToPeak.toFixed(0) : 'N/A'} min</div>
+            <div>AUC: {tooltipData.auc ? tooltipData.auc.toFixed(0) : 'N/A'}</div>
+          </TooltipWithBounds>
+        )}
+      </div>
+    </ResponsiveMainContent>
   );
 }; 

@@ -67,8 +67,6 @@ export const ManualBloodGlucoseEntry: React.FC<ManualBloodGlucoseEntryProps> = (
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Manual Blood Glucose Entry</h2>
-      
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="bg-value" className="block text-sm font-medium text-gray-700">

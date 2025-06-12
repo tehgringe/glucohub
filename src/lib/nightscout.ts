@@ -443,11 +443,7 @@ export class NightscoutClient {
   }
 
   async getSensorGlucoseReadings(): Promise<BloodGlucoseReading[]> {
-    // All debug logging suppressed as per request
-    // console.log('Fetching sensor glucose readings...');
     const entries = await this.fetchWithAuth('/api/v3/entries?type$eq=sgv');
-    // All debug logging suppressed as per request
-    // console.log('Raw sgv entries:', entries);
     
     return entries.map((entry: any) => ({
       id: entry.identifier,
@@ -461,109 +457,6 @@ export class NightscoutClient {
       direction: entry.direction,
       customFields: entry.customFields
     }));
-  }
-
-  async createSensorGlucoseEntry(reading: Omit<BloodGlucoseReading, 'id'>): Promise<BloodGlucoseReading> {
-    // All debug logging suppressed as per request
-    // console.log('Creating sensor glucose entry:', reading);
-    
-    const entry = {
-      type: 'sgv',
-      dateString: new Date(reading.date).toISOString(),
-      date: reading.date,
-      sgv: reading.sgv,
-      device: reading.device || 'CGM',
-      utcOffset: new Date().getTimezoneOffset(),
-      sysTime: new Date(reading.date).toISOString(),
-      direction: reading.direction,
-      source: 'glucohub',
-      device_source: reading.device_source,
-      test: reading.test,
-      app: 'glucohub', // Required field for API v3
-      customFields: {
-        source: 'glucohub',
-        version: '1.0.0',
-        metadata: {
-          createdBy: 'manual-entry',
-          timestamp: Date.now(),
-          deviceSource: reading.device_source,
-          isTest: reading.test
-        }
-      }
-    };
-
-    // All debug logging suppressed as per request
-    // console.log('Creating entry with data:', entry);
-    const result = await this.fetchWithAuth('/api/v3/entries', {
-      method: 'POST',
-      body: JSON.stringify(entry),
-    });
-
-    // All debug logging suppressed as per request
-    // console.log('Create sgv response:', result);
-
-    if (!result || !result.identifier) {
-      throw new Error('Failed to create sensor glucose entry: Invalid response from server');
-    }
-
-    return {
-      ...reading,
-      id: result.identifier,
-      nightscoutId: result.identifier
-    };
-  }
-
-  async updateSensorGlucoseEntry(reading: BloodGlucoseReading): Promise<BloodGlucoseReading> {
-    if (!reading.nightscoutId) {
-      throw new Error('Cannot update sensor glucose entry: Missing Nightscout ID');
-    }
-
-    // All debug logging suppressed as per request
-    // console.log('Updating sensor glucose entry:', reading);
-    
-    // First delete the existing entry
-    // All debug logging suppressed as per request
-    // console.log('Deleting existing entry with ID:', reading.nightscoutId);
-    await this.deleteSensorGlucoseEntry(reading.nightscoutId);
-    
-    // Then create a new entry with the updated data
-    const entry = {
-      type: 'sgv',
-      dateString: new Date(reading.date).toISOString(),
-      date: reading.date,
-      sgv: reading.sgv,
-      device: reading.device || 'CGM'
-    };
-
-    // All debug logging suppressed as per request
-    // console.log('Creating new entry with data:', entry);
-    const result = await this.fetchWithAuth('/api/v3/entries', {
-      method: 'POST',
-      body: JSON.stringify([entry]), // API expects an array
-    });
-
-    // All debug logging suppressed as per request
-    // console.log('Create sgv response:', result);
-
-    // Handle array response
-    const createdEntry = Array.isArray(result) ? result[0] : result;
-    if (!createdEntry || !createdEntry.identifier) {
-      throw new Error('Failed to create sensor glucose entry: Invalid response from server');
-    }
-
-    return {
-      ...reading,
-      id: createdEntry.identifier,
-      nightscoutId: createdEntry.identifier
-    };
-  }
-
-  async deleteSensorGlucoseEntry(id: string): Promise<void> {
-    // All debug logging suppressed as per request
-    // console.log('Deleting sensor glucose entry with ID:', id);
-    await this.fetchWithAuth(`/api/v3/entries/${id}`, {
-      method: 'DELETE',
-    });
   }
 
   async uploadEntries(entries: any[]): Promise<void> {

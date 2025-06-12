@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNightscout } from '../contexts/NightscoutContext';
+import { ResponsiveMainContent } from './ResponsiveMainContent';
 
 interface ApiResponse {
   status: number;
@@ -477,138 +478,266 @@ const DataFix: React.FC = () => {
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-4">Data Fix Tool</h2>
-      
-      <div className="space-y-4">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                <strong>Note:</strong> Due to MongoDB's eventual consistency model and caching behavior, 
-                the verification check may still show the document as existing even after successful deletion. 
-                The deletion is still processed correctly, but it may take some time for all caches to update.
-              </p>
+    <ResponsiveMainContent>
+      <>
+        <h2 className="text-xl font-semibold mb-4">Data Fix Tool</h2>
+        
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  <strong>Note:</strong> Due to MongoDB's eventual consistency model and caching behavior, 
+                  the verification check may still show the document as existing even after successful deletion. 
+                  The deletion is still processed correctly, but it may take some time for all caches to update.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Collection</label>
-          <select
-            value={selectedCollection}
-            onChange={(e) => setSelectedCollection(e.target.value as Collection)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-          >
-            {COLLECTIONS.map(collection => (
-              <option key={collection} value={collection}>
-                {collection}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Document ID</label>
-          <input
-            type="text"
-            value={documentId}
-            onChange={(e) => setDocumentId(e.target.value)}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            placeholder="Enter document ID"
-          />
-        </div>
-
-        <div className="flex space-x-4">
-          <button
-            onClick={() => setOperation('delete')}
-            className={`flex-1 px-4 py-2 rounded ${
-              operation === 'delete'
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Delete
-          </button>
-          <button
-            onClick={() => setOperation('patch')}
-            className={`flex-1 px-4 py-2 rounded ${
-              operation === 'patch'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Edit
-          </button>
-        </div>
-
-        {operation === 'delete' ? (
-          <>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="permanent"
-                checked={permanent}
-                onChange={(e) => setPermanent(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="permanent" className="ml-2 block text-sm text-gray-900">
-                Permanent deletion
-              </label>
-            </div>
-
-            <button
-              onClick={deleteDocument}
-              disabled={loading || !documentId}
-              className="w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Collection</label>
+            <select
+              value={selectedCollection}
+              onChange={(e) => setSelectedCollection(e.target.value as Collection)}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             >
-              {loading ? 'Processing...' : 'Delete Document'}
-            </button>
-          </>
-        ) : (
-          <>
+              {COLLECTIONS.map(collection => (
+                <option key={collection} value={collection}>
+                  {collection}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Document ID</label>
+            <input
+              type="text"
+              value={documentId}
+              onChange={(e) => setDocumentId(e.target.value)}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              placeholder="Enter document ID"
+            />
+          </div>
+
+          <div className="flex space-x-4">
             <button
-              onClick={loadDocument}
-              disabled={loading || !documentId}
+              onClick={() => setOperation('delete')}
+              className={`flex-1 px-4 py-2 rounded ${
+                operation === 'delete'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setOperation('patch')}
+              className={`flex-1 px-4 py-2 rounded ${
+                operation === 'patch'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Edit
+            </button>
+          </div>
+
+          {operation === 'delete' ? (
+            <>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="permanent"
+                  checked={permanent}
+                  onChange={(e) => setPermanent(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="permanent" className="ml-2 block text-sm text-gray-900">
+                  Permanent deletion
+                </label>
+              </div>
+
+              <button
+                onClick={deleteDocument}
+                disabled={loading || !documentId}
+                className="w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : 'Delete Document'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={loadDocument}
+                disabled={loading || !documentId}
+                className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+              >
+                {loading ? 'Loading...' : 'Load Document'}
+              </button>
+
+              {currentDocument && (
+                <div className="mt-4 space-y-4">
+                  <h3 className="text-lg font-medium">Edit Document</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">JSON Document</label>
+                    <textarea
+                      value={editedDocument}
+                      onChange={(e) => setEditedDocument(e.target.value)}
+                      className="w-full h-96 font-mono text-sm p-4 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      spellCheck="false"
+                    />
+                  </div>
+                  <button
+                    onClick={applyPatch}
+                    disabled={loading}
+                    className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
+                  >
+                    {loading ? 'Applying Changes...' : 'Apply Changes'}
+                  </button>
+                </div>
+              )}
+
+              {patchResponse && (
+                <div className="mt-4 p-4 bg-green-50 rounded-md">
+                  <div className="flex">
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-green-800">PATCH Response</h3>
+                      <div className="mt-2 text-sm text-green-700">
+                        <p>Status: {patchResponse.status}</p>
+                        {patchResponse.message && <p>Message: {patchResponse.message}</p>}
+                        <div className="mt-2">
+                          <p className="font-medium">Full Response:</p>
+                          <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
+                            {JSON.stringify(patchResponse, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 rounded-md">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Error</h3>
+                  <div className="mt-2 text-sm text-red-700">{error}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {initialCheck && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-md">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">Initial Check</h3>
+                  <div className="mt-2 text-sm text-blue-700">
+                    <p>Status: {initialCheck.status}</p>
+                    {initialCheck.message && <p>Message: {initialCheck.message}</p>}
+                    <div className="mt-2">
+                      <p className="font-medium">Full Response:</p>
+                      <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
+                        {JSON.stringify(initialCheck, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {deleteResponse && (
+            <div className="mt-4 p-4 bg-yellow-50 rounded-md">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">Delete Response</h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>Status: {deleteResponse.status}</p>
+                    {deleteResponse.message && <p>Message: {deleteResponse.message}</p>}
+                    <div className="mt-2">
+                      <p className="font-medium">Full Response:</p>
+                      <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
+                        {JSON.stringify(deleteResponse, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New MBG Cleanup Section */}
+          <div className="mt-8 border-t pt-4">
+            <h3 className="text-lg font-semibold mb-4">MBG Cleanup</h3>
+            <button
+              onClick={fetchAllMbgDocuments}
+              disabled={mbgLoading}
               className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
             >
-              {loading ? 'Loading...' : 'Load Document'}
+              {mbgLoading ? 'Loading...' : 'Fetch All MBG Documents'}
             </button>
 
-            {currentDocument && (
-              <div className="mt-4 space-y-4">
-                <h3 className="text-lg font-medium">Edit Document</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">JSON Document</label>
-                  <textarea
-                    value={editedDocument}
-                    onChange={(e) => setEditedDocument(e.target.value)}
-                    className="w-full h-96 font-mono text-sm p-4 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    spellCheck="false"
-                  />
+            {mbgError && (
+              <div className="mt-4 p-4 bg-red-50 rounded-md">
+                <div className="flex">
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{mbgError}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {mbgDocuments.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700">MBG Documents ({mbgDocuments.length})</h4>
+                <div className="mt-2 max-h-60 overflow-y-auto">
+                  <ul className="space-y-2">
+                    {mbgDocuments.map((doc, idx) => (
+                      <li key={doc.identifier || idx} className="text-sm text-gray-600">
+                        {doc.identifier
+                          ? <>
+                              <div><span className="font-mono font-bold">ID:</span> {doc.identifier}</div>
+                              <div><span className="font-mono">date:</span> {doc.date}</div>
+                              <div><span className="font-mono">mbg:</span> {doc.mbg}</div>
+                              <div><span className="font-mono">device:</span> {doc.device}</div>
+                            </>
+                          : <pre className="bg-yellow-100 p-2 rounded">{JSON.stringify(doc, null, 2)}</pre>
+                        }
+                      </li>
+                    ))}
+                  </ul>
                 </div>
                 <button
-                  onClick={applyPatch}
-                  disabled={loading}
-                  className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
+                  onClick={deleteAllMbgDocuments}
+                  disabled={mbgLoading}
+                  className="mt-4 w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
                 >
-                  {loading ? 'Applying Changes...' : 'Apply Changes'}
+                  {mbgLoading ? 'Deleting...' : 'Delete All MBG Documents'}
                 </button>
               </div>
             )}
 
-            {patchResponse && (
+            {mbgDeleteResponse && (
               <div className="mt-4 p-4 bg-green-50 rounded-md">
                 <div className="flex">
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">PATCH Response</h3>
+                    <h3 className="text-sm font-medium text-green-800">Delete Response</h3>
                     <div className="mt-2 text-sm text-green-700">
-                      <p>Status: {patchResponse.status}</p>
-                      {patchResponse.message && <p>Message: {patchResponse.message}</p>}
+                      <p>Status: {mbgDeleteResponse.status}</p>
+                      {mbgDeleteResponse.message && <p>Message: {mbgDeleteResponse.message}</p>}
                       <div className="mt-2">
                         <p className="font-medium">Full Response:</p>
                         <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
-                          {JSON.stringify(patchResponse, null, 2)}
+                          {JSON.stringify(mbgDeleteResponse, null, 2)}
                         </pre>
                       </div>
                     </div>
@@ -616,208 +745,82 @@ const DataFix: React.FC = () => {
                 </div>
               </div>
             )}
-          </>
-        )}
-
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 rounded-md">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error</h3>
-                <div className="mt-2 text-sm text-red-700">{error}</div>
-              </div>
-            </div>
           </div>
-        )}
 
-        {initialCheck && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-md">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">Initial Check</h3>
-                <div className="mt-2 text-sm text-blue-700">
-                  <p>Status: {initialCheck.status}</p>
-                  {initialCheck.message && <p>Message: {initialCheck.message}</p>}
-                  <div className="mt-2">
-                    <p className="font-medium">Full Response:</p>
-                    <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
-                      {JSON.stringify(initialCheck, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {deleteResponse && (
-          <div className="mt-4 p-4 bg-yellow-50 rounded-md">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">Delete Response</h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>Status: {deleteResponse.status}</p>
-                  {deleteResponse.message && <p>Message: {deleteResponse.message}</p>}
-                  <div className="mt-2">
-                    <p className="font-medium">Full Response:</p>
-                    <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
-                      {JSON.stringify(deleteResponse, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* New MBG Cleanup Section */}
-        <div className="mt-8 border-t pt-4">
-          <h3 className="text-lg font-semibold mb-4">MBG Cleanup</h3>
-          <button
-            onClick={fetchAllMbgDocuments}
-            disabled={mbgLoading}
-            className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-          >
-            {mbgLoading ? 'Loading...' : 'Fetch All MBG Documents'}
-          </button>
-
-          {mbgError && (
-            <div className="mt-4 p-4 bg-red-50 rounded-md">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{mbgError}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {mbgDocuments.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700">MBG Documents ({mbgDocuments.length})</h4>
-              <div className="mt-2 max-h-60 overflow-y-auto">
-                <ul className="space-y-2">
-                  {mbgDocuments.map((doc, idx) => (
-                    <li key={doc.identifier || idx} className="text-sm text-gray-600">
-                      {doc.identifier
-                        ? <>
-                            <div><span className="font-mono font-bold">ID:</span> {doc.identifier}</div>
-                            <div><span className="font-mono">date:</span> {doc.date}</div>
-                            <div><span className="font-mono">mbg:</span> {doc.mbg}</div>
-                            <div><span className="font-mono">device:</span> {doc.device}</div>
-                          </>
-                        : <pre className="bg-yellow-100 p-2 rounded">{JSON.stringify(doc, null, 2)}</pre>
-                      }
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <button
-                onClick={deleteAllMbgDocuments}
-                disabled={mbgLoading}
-                className="mt-4 w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
-              >
-                {mbgLoading ? 'Deleting...' : 'Delete All MBG Documents'}
-              </button>
-            </div>
-          )}
-
-          {mbgDeleteResponse && (
-            <div className="mt-4 p-4 bg-green-50 rounded-md">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">Delete Response</h3>
-                  <div className="mt-2 text-sm text-green-700">
-                    <p>Status: {mbgDeleteResponse.status}</p>
-                    {mbgDeleteResponse.message && <p>Message: {mbgDeleteResponse.message}</p>}
-                    <div className="mt-2">
-                      <p className="font-medium">Full Response:</p>
-                      <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
-                        {JSON.stringify(mbgDeleteResponse, null, 2)}
-                      </pre>
+          {/* New SGV Cleanup Section */}
+          <div className="mt-8 border-t pt-4">
+            <h3 className="text-lg font-semibold mb-4">SGV Cleanup</h3>
+            <button
+              onClick={fetchAllSgvDocuments}
+              disabled={sgvLoading}
+              className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {sgvLoading ? 'Loading...' : 'Fetch All SGV Documents'}
+            </button>
+            {sgvError && (
+              <div className="mt-4 p-4 bg-red-50 rounded-md">
+                <div className="flex">
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{sgvError}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* New SGV Cleanup Section */}
-        <div className="mt-8 border-t pt-4">
-          <h3 className="text-lg font-semibold mb-4">SGV Cleanup</h3>
-          <button
-            onClick={fetchAllSgvDocuments}
-            disabled={sgvLoading}
-            className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-          >
-            {sgvLoading ? 'Loading...' : 'Fetch All SGV Documents'}
-          </button>
-          {sgvError && (
-            <div className="mt-4 p-4 bg-red-50 rounded-md">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{sgvError}</p>
-                  </div>
+            )}
+            {sgvDocuments.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700">SGV Documents ({sgvDocuments.length})</h4>
+                <div className="mt-2 max-h-60 overflow-y-auto">
+                  <ul className="space-y-2">
+                    {sgvDocuments.map((doc, idx) => (
+                      <li key={doc.identifier || idx} className="text-sm text-gray-600">
+                        {doc.identifier
+                          ? <>
+                              <div><span className="font-mono font-bold">ID:</span> {doc.identifier}</div>
+                              <div><span className="font-mono">date:</span> {doc.date}</div>
+                              <div><span className="font-mono">sgv:</span> {doc.sgv}</div>
+                              <div><span className="font-mono">device:</span> {doc.device}</div>
+                            </>
+                          : <pre className="bg-yellow-100 p-2 rounded">{JSON.stringify(doc, null, 2)}</pre>
+                        }
+                      </li>
+                    ))}
+                  </ul>
                 </div>
+                <button
+                  onClick={deleteAllSgvDocuments}
+                  disabled={sgvLoading}
+                  className="mt-4 w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
+                >
+                  {sgvLoading ? 'Deleting...' : 'Delete All SGV Documents'}
+                </button>
               </div>
-            </div>
-          )}
-          {sgvDocuments.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700">SGV Documents ({sgvDocuments.length})</h4>
-              <div className="mt-2 max-h-60 overflow-y-auto">
-                <ul className="space-y-2">
-                  {sgvDocuments.map((doc, idx) => (
-                    <li key={doc.identifier || idx} className="text-sm text-gray-600">
-                      {doc.identifier
-                        ? <>
-                            <div><span className="font-mono font-bold">ID:</span> {doc.identifier}</div>
-                            <div><span className="font-mono">date:</span> {doc.date}</div>
-                            <div><span className="font-mono">sgv:</span> {doc.sgv}</div>
-                            <div><span className="font-mono">device:</span> {doc.device}</div>
-                          </>
-                        : <pre className="bg-yellow-100 p-2 rounded">{JSON.stringify(doc, null, 2)}</pre>
-                      }
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <button
-                onClick={deleteAllSgvDocuments}
-                disabled={sgvLoading}
-                className="mt-4 w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
-              >
-                {sgvLoading ? 'Deleting...' : 'Delete All SGV Documents'}
-              </button>
-            </div>
-          )}
-          {sgvDeleteResponse && (
-            <div className="mt-4 p-4 bg-green-50 rounded-md">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">Delete Response</h3>
-                  <div className="mt-2 text-sm text-green-700">
-                    <p>Status: {sgvDeleteResponse.status}</p>
-                    {sgvDeleteResponse.message && <p>Message: {sgvDeleteResponse.message}</p>}
-                    <div className="mt-2">
-                      <p className="font-medium">Full Response:</p>
-                      <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
-                        {JSON.stringify(sgvDeleteResponse, null, 2)}
-                      </pre>
+            )}
+            {sgvDeleteResponse && (
+              <div className="mt-4 p-4 bg-green-50 rounded-md">
+                <div className="flex">
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">Delete Response</h3>
+                    <div className="mt-2 text-sm text-green-700">
+                      <p>Status: {sgvDeleteResponse.status}</p>
+                      {sgvDeleteResponse.message && <p>Message: {sgvDeleteResponse.message}</p>}
+                      <div className="mt-2">
+                        <p className="font-medium">Full Response:</p>
+                        <pre className="mt-1 bg-white p-2 rounded text-xs overflow-auto">
+                          {JSON.stringify(sgvDeleteResponse, null, 2)}
+                        </pre>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </>
+    </ResponsiveMainContent>
   );
 };
 

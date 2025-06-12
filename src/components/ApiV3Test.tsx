@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNightscout } from '../contexts/NightscoutContext';
 import { testNightscoutApiV3Status } from '../lib/nightscout';
+import { ResponsiveMainContent } from './ResponsiveMainContent';
 
 interface ApiResponse {
   status: number;
@@ -272,253 +273,255 @@ const ApiV3Test: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">API v3 Status Test</h2>
-        <button
-          onClick={testApiV3Status}
-          disabled={loading}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          {loading ? 'Testing...' : 'Test API v3 status'}
-        </button>
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-        {statusResponse && (
-          <div className="mt-4">
-            <h3 className="font-medium">Response:</h3>
-            <pre className="bg-gray-100 p-4 rounded mt-2 overflow-auto">
-              {JSON.stringify(statusResponse, null, 2)}
-            </pre>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">API v3 Collection Document Test</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Collection</label>
-            <select
-              value={selectedCollection}
-              onChange={(e) => setSelectedCollection(e.target.value as Collection)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-            >
-              {COLLECTIONS.map(collection => (
-                <option key={collection} value={collection}>
-                  {collection}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Limit</label>
-              <input
-                type="number"
-                value={queryParams.limit}
-                onChange={(e) => setQueryParams(prev => ({ ...prev, limit: parseInt(e.target.value) || 10 }))}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                min="1"
-                max="100"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Skip</label>
-              <input
-                type="number"
-                value={queryParams.skip}
-                onChange={(e) => setQueryParams(prev => ({ ...prev, skip: parseInt(e.target.value) || 0 }))}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                min="0"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Sort Field</label>
-              <input
-                type="text"
-                value={queryParams.sort || ''}
-                onChange={(e) => setQueryParams(prev => ({ 
-                  ...prev, 
-                  sort: e.target.value,
-                  sortDesc: '' // Clear sortDesc when sort is set
-                }))}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="e.g., date"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Sort Descending</label>
-              <input
-                type="text"
-                value={queryParams.sortDesc || ''}
-                onChange={(e) => setQueryParams(prev => ({ 
-                  ...prev, 
-                  sortDesc: e.target.value,
-                  sort: '' // Clear sort when sortDesc is set
-                }))}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="e.g., date"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filters (one per line, format: field$operator=value)
-            </label>
-            <div className="mb-2 text-sm text-gray-600">
-              <p>Example filters for entries:</p>
-              <ul className="list-disc list-inside">
-                <li>type$eq=mbg (manual blood glucose entries)</li>
-                <li>type$eq=sgv (sensor glucose values)</li>
-                <li>date$gt=1748709420000 (entries after specific timestamp)</li>
-                <li>mbg$gt=100 (manual readings above 100)</li>
-                <li>sgv$gt=100 (sensor readings above 100)</li>
-              </ul>
-              <p className="mt-2">Common operators: $eq, $ne, $gt, $gte, $lt, $lte, $in, $nin, $re</p>
-            </div>
-            <textarea
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              placeholder="type$eq=mbg&#10;date$gt=1748709420000"
-              className="w-full p-2 border rounded h-24"
-            />
-          </div>
-
-          <div className="flex space-x-4">
-            <button
-              onClick={testGetCollectionDocument}
-              disabled={loading}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-            >
-              {loading ? 'Loading...' : 'Fetch Collection Documents'}
-            </button>
-            <button
-              onClick={() => {
-                setFilterText('');
-                setQueryParams({
-                  limit: 10,
-                  skip: 0,
-                  fields: '_all',
-                  filters: {}
-                });
-              }}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-            >
-              Reset Filters
-            </button>
-          </div>
-
-          {error && (
-            <div className="text-red-500 mt-2">
-              Error: {error}
+    <ResponsiveMainContent>
+      <div className="space-y-6">
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">API v3 Status Test</h2>
+          <button
+            onClick={testApiV3Status}
+            disabled={loading}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+          >
+            {loading ? 'Testing...' : 'Test API v3 status'}
+          </button>
+          {error && <p className="text-red-500 mt-2">{error}</p>}
+          {statusResponse && (
+            <div className="mt-4">
+              <h3 className="font-medium">Response:</h3>
+              <pre className="bg-gray-100 p-4 rounded mt-2 overflow-auto">
+                {JSON.stringify(statusResponse, null, 2)}
+              </pre>
             </div>
           )}
+        </div>
 
-          {collectionResponse && (
-            <div className="mt-4">
-              <h3 className="font-medium mb-2">Response:</h3>
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">API v3 Collection Document Test</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Collection</label>
+              <select
+                value={selectedCollection}
+                onChange={(e) => setSelectedCollection(e.target.value as Collection)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              >
+                {COLLECTIONS.map(collection => (
+                  <option key={collection} value={collection}>
+                    {collection}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Limit</label>
+                <input
+                  type="number"
+                  value={queryParams.limit}
+                  onChange={(e) => setQueryParams(prev => ({ ...prev, limit: parseInt(e.target.value) || 10 }))}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  min="1"
+                  max="100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Skip</label>
+                <input
+                  type="number"
+                  value={queryParams.skip}
+                  onChange={(e) => setQueryParams(prev => ({ ...prev, skip: parseInt(e.target.value) || 0 }))}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  min="0"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Sort Field</label>
+                <input
+                  type="text"
+                  value={queryParams.sort || ''}
+                  onChange={(e) => setQueryParams(prev => ({ 
+                    ...prev, 
+                    sort: e.target.value,
+                    sortDesc: '' // Clear sortDesc when sort is set
+                  }))}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="e.g., date"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Sort Descending</label>
+                <input
+                  type="text"
+                  value={queryParams.sortDesc || ''}
+                  onChange={(e) => setQueryParams(prev => ({ 
+                    ...prev, 
+                    sortDesc: e.target.value,
+                    sort: '' // Clear sort when sortDesc is set
+                  }))}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="e.g., date"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Filters (one per line, format: field$operator=value)
+              </label>
               <div className="mb-2 text-sm text-gray-600">
-                <p>Found {collectionResponse.result?.length || 0} documents</p>
-                {selectedCollection === 'entries' && collectionResponse.result?.length > 0 && (
-                  <div className="mt-2">
-                    <h4 className="font-medium">Data Gap Analysis:</h4>
-                    {(() => {
-                      const gaps = analyzeDataGaps(collectionResponse.result);
-                      if (!gaps || gaps.length === 0) {
-                        return <p>No significant gaps found in the data.</p>;
-                      }
-                      return (
-                        <div className="mt-2 space-y-4">
-                          {gaps.map((gap, index) => (
-                            <div key={index} className="bg-yellow-50 p-4 rounded border border-yellow-200">
-                              <p className="font-medium">Gap {index + 1}:</p>
-                              <p>Start: {gap.start}</p>
-                              <p>End: {gap.end}</p>
-                              <p>Duration: {gap.duration}</p>
-                              <div className="mt-2">
-                                <p className="font-medium">Surrounding Entries:</p>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <p className="text-sm font-medium">Before Gap:</p>
-                                    <pre className="text-xs bg-white p-2 rounded">
-                                      {JSON.stringify(gap.entries.before, null, 2)}
-                                    </pre>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">After Gap:</p>
-                                    <pre className="text-xs bg-white p-2 rounded">
-                                      {JSON.stringify(gap.entries.after, null, 2)}
-                                    </pre>
+                <p>Example filters for entries:</p>
+                <ul className="list-disc list-inside">
+                  <li>type$eq=mbg (manual blood glucose entries)</li>
+                  <li>type$eq=sgv (sensor glucose values)</li>
+                  <li>date$gt=1748709420000 (entries after specific timestamp)</li>
+                  <li>mbg$gt=100 (manual readings above 100)</li>
+                  <li>sgv$gt=100 (sensor readings above 100)</li>
+                </ul>
+                <p className="mt-2">Common operators: $eq, $ne, $gt, $gte, $lt, $lte, $in, $nin, $re</p>
+              </div>
+              <textarea
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                placeholder="type$eq=mbg&#10;date$gt=1748709420000"
+                className="w-full p-2 border rounded h-24"
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={testGetCollectionDocument}
+                disabled={loading}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+              >
+                {loading ? 'Loading...' : 'Fetch Collection Documents'}
+              </button>
+              <button
+                onClick={() => {
+                  setFilterText('');
+                  setQueryParams({
+                    limit: 10,
+                    skip: 0,
+                    fields: '_all',
+                    filters: {}
+                  });
+                }}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Reset Filters
+              </button>
+            </div>
+
+            {error && (
+              <div className="text-red-500 mt-2">
+                Error: {error}
+              </div>
+            )}
+
+            {collectionResponse && (
+              <div className="mt-4">
+                <h3 className="font-medium mb-2">Response:</h3>
+                <div className="mb-2 text-sm text-gray-600">
+                  <p>Found {collectionResponse.result?.length || 0} documents</p>
+                  {selectedCollection === 'entries' && collectionResponse.result?.length > 0 && (
+                    <div className="mt-2">
+                      <h4 className="font-medium">Data Gap Analysis:</h4>
+                      {(() => {
+                        const gaps = analyzeDataGaps(collectionResponse.result);
+                        if (!gaps || gaps.length === 0) {
+                          return <p>No significant gaps found in the data.</p>;
+                        }
+                        return (
+                          <div className="mt-2 space-y-4">
+                            {gaps.map((gap, index) => (
+                              <div key={index} className="bg-yellow-50 p-4 rounded border border-yellow-200">
+                                <p className="font-medium">Gap {index + 1}:</p>
+                                <p>Start: {gap.start}</p>
+                                <p>End: {gap.end}</p>
+                                <p>Duration: {gap.duration}</p>
+                                <div className="mt-2">
+                                  <p className="font-medium">Surrounding Entries:</p>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <p className="text-sm font-medium">Before Gap:</p>
+                                      <pre className="text-xs bg-white p-2 rounded">
+                                        {JSON.stringify(gap.entries.before, null, 2)}
+                                      </pre>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium">After Gap:</p>
+                                      <pre className="text-xs bg-white p-2 rounded">
+                                        {JSON.stringify(gap.entries.after, null, 2)}
+                                      </pre>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+                <pre className="bg-gray-100 p-4 rounded overflow-auto">
+                  {JSON.stringify(collectionResponse, null, 2)}
+                </pre>
               </div>
-              <pre className="bg-gray-100 p-4 rounded overflow-auto">
-                {JSON.stringify(collectionResponse, null, 2)}
-              </pre>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">API v3 Document Test</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Collection</label>
-            <select
-              value={selectedCollection}
-              onChange={(e) => setSelectedCollection(e.target.value as Collection)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-            >
-              {COLLECTIONS.map(collection => (
-                <option key={collection} value={collection}>
-                  {collection}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Document ID</label>
-            <input
-              type="text"
-              value={documentId}
-              onChange={(e) => setDocumentId(e.target.value)}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Enter document ID"
-            />
-          </div>
-          <button
-            onClick={testGetDocument}
-            disabled={loading || !documentId}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-          >
-            {loading ? 'Loading...' : 'Get Document'}
-          </button>
-          {error && <p className="text-red-500">{error}</p>}
-          {documentResponse && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">API v3 Document Test</h2>
+          <div className="space-y-4">
             <div>
-              <h3 className="font-medium">Response:</h3>
-              <pre className="bg-gray-100 p-4 rounded mt-2 overflow-auto">
-                {JSON.stringify(documentResponse, null, 2)}
-              </pre>
+              <label className="block text-sm font-medium text-gray-700">Collection</label>
+              <select
+                value={selectedCollection}
+                onChange={(e) => setSelectedCollection(e.target.value as Collection)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              >
+                {COLLECTIONS.map(collection => (
+                  <option key={collection} value={collection}>
+                    {collection}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Document ID</label>
+              <input
+                type="text"
+                value={documentId}
+                onChange={(e) => setDocumentId(e.target.value)}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Enter document ID"
+              />
+            </div>
+            <button
+              onClick={testGetDocument}
+              disabled={loading || !documentId}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {loading ? 'Loading...' : 'Get Document'}
+            </button>
+            {error && <p className="text-red-500">{error}</p>}
+            {documentResponse && (
+              <div>
+                <h3 className="font-medium">Response:</h3>
+                <pre className="bg-gray-100 p-4 rounded mt-2 overflow-auto">
+                  {JSON.stringify(documentResponse, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </ResponsiveMainContent>
   );
 };
 

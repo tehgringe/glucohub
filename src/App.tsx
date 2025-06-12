@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, NavLink, Navigate } from 'react-router-dom';
 import { NightscoutProvider } from './contexts/NightscoutContext';
 import { MealLogger } from './components/MealLogger';
 import { MealPlans } from './components/MealPlans';
@@ -129,7 +129,7 @@ function SidebarNav() {
                   style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
                 >
                   <ListAlt sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
-                  {miniOpen && <ListItemText primary="Overview" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                  {miniOpen && <ListItemText primary="Manual Blood Glucose" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
                 </NavLink>
               </ListItem>
               <ListItem disableGutters>
@@ -139,7 +139,7 @@ function SidebarNav() {
                   style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
                 >
                   <Assignment sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
-                  {miniOpen && <ListItemText primary="Sensor Entry" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                  {miniOpen && <ListItemText primary="CGM Data" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
                 </NavLink>
               </ListItem>
               <ListItem disableGutters>
@@ -164,7 +164,7 @@ function SidebarNav() {
             <List component="div" disablePadding>
               <ListItem disableGutters>
                 <NavLink
-                  to="/"
+                  to="/meal-logger"
                   className={({ isActive }) => navLinkClass(isActive)}
                   style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
                 >
@@ -340,7 +340,7 @@ function SidebarNav() {
                 style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
               >
                 <ListAlt sx={{ mr: 1 }} fontSize="small" />
-                <ListItemText primary="Overview" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+                <ListItemText primary="Manual Blood Glucose" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
             <ListItem disableGutters>
@@ -350,7 +350,7 @@ function SidebarNav() {
                 style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
               >
                 <Assignment sx={{ mr: 1 }} fontSize="small" />
-                <ListItemText primary="Sensor Entry" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+                <ListItemText primary="CGM Data" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
             <ListItem disableGutters>
@@ -375,7 +375,7 @@ function SidebarNav() {
           <List component="div" disablePadding>
             <ListItem disableGutters>
               <NavLink
-                to="/"
+                to="/meal-logger"
                 className={({ isActive }) => navLinkClass(isActive)}
                 style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
               >
@@ -476,7 +476,7 @@ function AppLayout() {
       <SidebarNav />
       <Box component="main" sx={{ flexGrow: 1, bgcolor: '#f3f4f6', minHeight: '100vh', p: 3 }}>
         <Routes>
-          <Route path="/" element={<MealLogger />} />
+          <Route path="/meal-logger" element={<MealLogger />} />
           <Route path="/meal-plans" element={<MealPlans />} />
           <Route path="/blood-glucose" element={<BloodGlucose />} />
           <Route path="/sensor-glucose" element={<SensorGlucose />} />
@@ -489,6 +489,7 @@ function AppLayout() {
           <Route path="/data-recovery" element={<DataRecoveryToolkit />} />
           <Route path="/data-fix" element={<DataFix />} />
           <Route path="/config" element={<Settings onSave={() => {}} />} />
+          <Route path="/" element={<Navigate to="/meal-logger" replace />} />
         </Routes>
       </Box>
     </Box>
