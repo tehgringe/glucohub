@@ -54,107 +54,191 @@ function SidebarNav() {
       <List component="nav" sx={{ pt: 0 }}>
         {/* Charts */}
         <ListItem component="div" onClick={() => handleToggle('charts')}>
-          <BarChart sx={{ mr: 2 }} />
-          <ListItemText primary="Charts" />
+          <BarChart sx={{ mr: 2 }} fontSize="small" />
+          <ListItemText primary="Charts" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.charts ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.charts} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts?view=linear" sx={{ pl: 4 }}>
-              <Timeline sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="24-Hour Linear" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/charts?view=linear"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Timeline sx={{ mr: 1, color: '#374151' }} fontSize="small" />
+                <ListItemText primary="24-Hour Linear" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts?view=wheel" sx={{ pl: 4 }}>
-              <Radar sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Time Wheel" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/charts?view=wheel"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Radar sx={{ mr: 1, color: '#374151' }} fontSize="small" />
+                <ListItemText primary="Time Wheel" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts/macro-pie-example" sx={{ pl: 4 }}>
-              <PieChart sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Macros" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/charts/macro-pie-example"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <PieChart sx={{ mr: 1, color: '#374151' }} fontSize="small" />
+                <ListItemText primary="Macros" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts/macro-bg-bubble" sx={{ pl: 4 }}>
-              <MuiBubbleChart sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Macro-BG Bubble" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/charts/macro-bg-bubble"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <MuiBubbleChart sx={{ mr: 1, color: '#374151' }} fontSize="small" />
+                <ListItemText primary="Macro-BG Bubble" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
           </List>
         </Collapse>
         {/* Blood Glucose */}
         <ListItem component="div" onClick={() => handleToggle('bg')}>
           <Science sx={{ mr: 2 }} />
-          <ListItemText primary="Blood Glucose" />
+          <ListItemText primary="Blood Glucose" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.bg ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.bg} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/blood-glucose" sx={{ pl: 4 }}>
-              <ListAlt sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Overview" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/blood-glucose"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <ListAlt sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Overview" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/sensor-glucose" sx={{ pl: 4 }}>
-              <Assignment sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Sensor Entry" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/sensor-glucose"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Assignment sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Sensor Entry" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/upload" sx={{ pl: 4 }}>
-              <Storage sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Upload" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/upload"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Storage sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Upload" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
           </List>
         </Collapse>
         {/* Meals */}
         <ListItem component="div" onClick={() => handleToggle('meals')}>
           <Fastfood sx={{ mr: 2 }} />
-          <ListItemText primary="Meals" />
+          <ListItemText primary="Meals" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.meals ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.meals} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/" sx={{ pl: 4 }}>
-              <Restaurant sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Meal Logger" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Restaurant sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Meal Logger" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/meal-plans" sx={{ pl: 4 }}>
-              <MenuBook sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Meal Plans" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/meal-plans"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <MenuBook sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Meal Plans" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
           </List>
         </Collapse>
         {/* Advanced Tools */}
         <ListItem component="div" onClick={() => handleToggle('tools')}>
           <Build sx={{ mr: 2 }} />
-          <ListItemText primary="Advanced Tools" />
+          <ListItemText primary="Advanced Tools" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.tools ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.tools} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/api-v3-test" sx={{ pl: 4 }}>
-              <BugReport sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="API v3 Test" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/api-v3-test"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <BugReport sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="API v3 Test" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/xdrip-db" sx={{ pl: 4 }}>
-              <Storage sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="xDrip DB" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/xdrip-db"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Storage sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="xDrip DB" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/data-recovery" sx={{ pl: 4 }}>
-              <Build sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Data Recovery Toolkit" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/data-recovery"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Build sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Data Recovery Toolkit" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/data-fix" sx={{ pl: 4 }}>
-              <Build sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Data Fix" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/data-fix"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <Build sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Data Fix" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
           </List>
         </Collapse>
         {/* Settings */}
         <ListItem component="div" onClick={() => handleToggle('settings')}>
           <MuiSettings sx={{ mr: 2 }} />
-          <ListItemText primary="Settings" />
+          <ListItemText primary="Settings" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.settings ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.settings} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/config" sx={{ pl: 4 }}>
-              <MuiSettings sx={{ mr: 1 }} fontSize="small" />
-              <ListItemText primary="Configuration" />
+            <ListItem button disableGutters>
+              <NavLink
+                to="/config"
+                className={({ isActive }) => navLinkClass(isActive)}
+                style={{ display: 'flex', alignItems: 'center', paddingLeft: 32, width: '100%' }}
+              >
+                <MuiSettings sx={{ mr: 1 }} fontSize="small" />
+                <ListItemText primary="Configuration" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
+              </NavLink>
             </ListItem>
           </List>
         </Collapse>
