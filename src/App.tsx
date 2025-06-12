@@ -13,13 +13,14 @@ import DataFix from './components/DataFix';
 import { Charts } from './components/Charts';
 import { Settings } from './components/Settings';
 import DataRecoveryToolkit from './components/DataRecoveryToolkit';
-import { Drawer, List, ListItem, ListItemText, Collapse, ListSubheader, Toolbar, Box, Divider } from '@mui/material';
+import { Drawer, List, ListItem, ListItemText, Collapse, ListSubheader, Toolbar, Box, Divider, IconButton, useMediaQuery } from '@mui/material';
 import { ExpandLess, ExpandMore, Timeline, Radar, Restaurant, Settings as MuiSettings, Science, BarChart, PieChart, ListAlt, Build, Storage, BugReport, Assignment, Fastfood, MenuBook } from '@mui/icons-material';
 import glucohubLogo from './../public/glucohub_logo_small.png';
 import { MacroPieExample } from './components/Charts/MacroPieExample';
 import { BubbleChart as MuiBubbleChart } from '@mui/icons-material';
 import { BubbleChart } from './components/Charts/BubbleChart';
 import { use24HourChartData } from './components/use24HourChartData';
+import MenuIcon from '@mui/icons-material/Menu';
 
 const drawerWidth = 260;
 
@@ -34,8 +35,230 @@ function SidebarNav() {
     tools: false,
     settings: false,
   });
+  const [miniOpen, setMiniOpen] = useState(false); // for mobile mini-drawer
+  const isMobile = useMediaQuery('(max-width:600px)');
   const location = useLocation();
   const handleToggle = (key: keyof typeof open) => setOpen(prev => ({ ...prev, [key]: !prev[key] }));
+
+  if (isMobile) {
+    // Mobile: mini drawer with icons only, expandable
+    return (
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: miniOpen ? 200 : 56,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: {
+            width: miniOpen ? 200 : 56,
+            boxSizing: 'border-box',
+            background: '#f8fafc',
+            overflowX: 'hidden',
+            transition: 'width 0.2s',
+          },
+        }}
+      >
+        <Toolbar>
+          <IconButton onClick={() => setMiniOpen(!miniOpen)}>
+            <MenuIcon />
+          </IconButton>
+        </Toolbar>
+        <Divider />
+        <List component="nav" sx={{ pt: 0 }}>
+          {/* Charts */}
+          <ListItem disableGutters onClick={() => handleToggle('charts')}>
+            <BarChart sx={{ mr: miniOpen ? 2 : 0 }} fontSize="small" />
+            {miniOpen && <ListItemText primary="Charts" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />}
+            {miniOpen && (open.charts ? <ExpandLess /> : <ExpandMore />)}
+          </ListItem>
+          <Collapse in={open.charts && miniOpen} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/charts?view=linear"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Timeline sx={{ mr: miniOpen ? 1 : 0, color: '#374151' }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="24-Hour Linear" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/charts?view=wheel"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Radar sx={{ mr: miniOpen ? 1 : 0, color: '#374151' }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Time Wheel" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/charts/macro-pie-example"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <PieChart sx={{ mr: miniOpen ? 1 : 0, color: '#374151' }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Macros" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/charts/macro-bg-bubble"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <MuiBubbleChart sx={{ mr: miniOpen ? 1 : 0, color: '#374151' }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Macro-BG Bubble" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+            </List>
+          </Collapse>
+          {/* Blood Glucose */}
+          <ListItem disableGutters onClick={() => handleToggle('bg')}>
+            <Science sx={{ mr: miniOpen ? 2 : 0 }} />
+            {miniOpen && <ListItemText primary="Blood Glucose" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />}
+            {miniOpen && (open.bg ? <ExpandLess /> : <ExpandMore />)}
+          </ListItem>
+          <Collapse in={open.bg && miniOpen} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/blood-glucose"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <ListAlt sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Overview" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/sensor-glucose"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Assignment sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Sensor Entry" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/upload"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Storage sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Upload" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+            </List>
+          </Collapse>
+          {/* Meals */}
+          <ListItem disableGutters onClick={() => handleToggle('meals')}>
+            <Fastfood sx={{ mr: miniOpen ? 2 : 0 }} />
+            {miniOpen && <ListItemText primary="Meals" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />}
+            {miniOpen && (open.meals ? <ExpandLess /> : <ExpandMore />)}
+          </ListItem>
+          <Collapse in={open.meals && miniOpen} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Restaurant sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Meal Logger" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/meal-plans"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <MenuBook sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Meal Plans" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+            </List>
+          </Collapse>
+          {/* Advanced Tools */}
+          <ListItem disableGutters onClick={() => handleToggle('tools')}>
+            <Build sx={{ mr: miniOpen ? 2 : 0 }} />
+            {miniOpen && <ListItemText primary="Advanced Tools" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />}
+            {miniOpen && (open.tools ? <ExpandLess /> : <ExpandMore />)}
+          </ListItem>
+          <Collapse in={open.tools && miniOpen} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/api-v3-test"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <BugReport sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="API v3 Test" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/xdrip-db"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Storage sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="xDrip DB" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/data-recovery"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Build sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Data Recovery Toolkit" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/data-fix"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <Build sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Data Fix" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+            </List>
+          </Collapse>
+          {/* Settings */}
+          <ListItem disableGutters onClick={() => handleToggle('settings')}>
+            <MuiSettings sx={{ mr: miniOpen ? 2 : 0 }} />
+            {miniOpen && <ListItemText primary="Settings" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />}
+            {miniOpen && (open.settings ? <ExpandLess /> : <ExpandMore />)}
+          </ListItem>
+          <Collapse in={open.settings && miniOpen} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItem disableGutters>
+                <NavLink
+                  to="/config"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                  style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, width: '100%' }}
+                >
+                  <MuiSettings sx={{ mr: miniOpen ? 1 : 0 }} fontSize="small" />
+                  {miniOpen && <ListItemText primary="Configuration" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />}
+                </NavLink>
+              </ListItem>
+            </List>
+          </Collapse>
+        </List>
+      </Drawer>
+    );
+  }
+  // Desktop: show full sidebar as before
   return (
     <Drawer
       variant="permanent"
@@ -53,14 +276,14 @@ function SidebarNav() {
       <Divider />
       <List component="nav" sx={{ pt: 0 }}>
         {/* Charts */}
-        <ListItem component="div" onClick={() => handleToggle('charts')}>
+        <ListItem disableGutters onClick={() => handleToggle('charts')}>
           <BarChart sx={{ mr: 2 }} fontSize="small" />
           <ListItemText primary="Charts" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.charts ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.charts} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/charts?view=linear"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -70,7 +293,7 @@ function SidebarNav() {
                 <ListItemText primary="24-Hour Linear" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/charts?view=wheel"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -80,7 +303,7 @@ function SidebarNav() {
                 <ListItemText primary="Time Wheel" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/charts/macro-pie-example"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -90,7 +313,7 @@ function SidebarNav() {
                 <ListItemText primary="Macros" primaryTypographyProps={{ style: { color: '#374151', fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/charts/macro-bg-bubble"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -103,14 +326,14 @@ function SidebarNav() {
           </List>
         </Collapse>
         {/* Blood Glucose */}
-        <ListItem component="div" onClick={() => handleToggle('bg')}>
+        <ListItem disableGutters onClick={() => handleToggle('bg')}>
           <Science sx={{ mr: 2 }} />
           <ListItemText primary="Blood Glucose" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.bg ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.bg} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/blood-glucose"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -120,7 +343,7 @@ function SidebarNav() {
                 <ListItemText primary="Overview" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/sensor-glucose"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -130,7 +353,7 @@ function SidebarNav() {
                 <ListItemText primary="Sensor Entry" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/upload"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -143,14 +366,14 @@ function SidebarNav() {
           </List>
         </Collapse>
         {/* Meals */}
-        <ListItem component="div" onClick={() => handleToggle('meals')}>
+        <ListItem disableGutters onClick={() => handleToggle('meals')}>
           <Fastfood sx={{ mr: 2 }} />
           <ListItemText primary="Meals" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.meals ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.meals} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -160,7 +383,7 @@ function SidebarNav() {
                 <ListItemText primary="Meal Logger" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/meal-plans"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -173,14 +396,14 @@ function SidebarNav() {
           </List>
         </Collapse>
         {/* Advanced Tools */}
-        <ListItem component="div" onClick={() => handleToggle('tools')}>
+        <ListItem disableGutters onClick={() => handleToggle('tools')}>
           <Build sx={{ mr: 2 }} />
           <ListItemText primary="Advanced Tools" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.tools ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.tools} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/api-v3-test"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -190,7 +413,7 @@ function SidebarNav() {
                 <ListItemText primary="API v3 Test" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/xdrip-db"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -200,7 +423,7 @@ function SidebarNav() {
                 <ListItemText primary="xDrip DB" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/data-recovery"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -210,7 +433,7 @@ function SidebarNav() {
                 <ListItemText primary="Data Recovery Toolkit" primaryTypographyProps={{ style: { fontSize: '0.85rem' } }} />
               </NavLink>
             </ListItem>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/data-fix"
                 className={({ isActive }) => navLinkClass(isActive)}
@@ -223,14 +446,14 @@ function SidebarNav() {
           </List>
         </Collapse>
         {/* Settings */}
-        <ListItem component="div" onClick={() => handleToggle('settings')}>
+        <ListItem disableGutters onClick={() => handleToggle('settings')}>
           <MuiSettings sx={{ mr: 2 }} />
           <ListItemText primary="Settings" primaryTypographyProps={{ style: { fontSize: '0.95rem' } }} />
           {open.settings ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open.settings} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button disableGutters>
+            <ListItem disableGutters>
               <NavLink
                 to="/config"
                 className={({ isActive }) => navLinkClass(isActive)}
