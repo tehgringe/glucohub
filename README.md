@@ -1,5 +1,6 @@
 
-![Uploading glucohub_logo.png…]()
+![GlucoHub](public/glucohub_logo.png)
+
 # GlucoHub
 
 **GlucoHub** provides advanced visualization, logging, and recovery tools for blood glucose, meals, and activity data, all in a user-friendly, mobile-friendly interface. It builds on top of Nightscout, providing additional features and analysis.
