@@ -1,5 +1,5 @@
 
-![GlucoHub](public/glucohub_logo.png)
+<img src="public/glucohub_logo.png" alt="GlucoHub" width="300"/>
 
 # GlucoHub
 
