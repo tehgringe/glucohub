@@ -145,16 +145,10 @@ export class NightscoutClient {
   }
 
   async createFoodEntry(food: Omit<FoodEntry, 'id'>): Promise<FoodEntry> {
+    console.log('[NS DEBUG] Payload to /api/v3/food:', food);
     const response = await this.fetchWithAuth('/api/v3/food', {
       method: 'POST',
-      body: JSON.stringify({
-        name: food.name,
-        carbs: food.carbs,
-        protein: food.protein,
-        fat: food.fat,
-        notes: food.notes,
-        type: 'food'
-      })
+      body: JSON.stringify(food)
     });
 
     if (!response || !response.identifier) {

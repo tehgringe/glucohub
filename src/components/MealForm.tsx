@@ -2,55 +2,30 @@ import React, { useState } from 'react';
 import { Meal, FoodEntry } from '../types/nightscout';
 
 interface MealFormProps {
-  onSubmit: (meal: Omit<Meal, 'id'>) => void;
+  onSubmit: (food: Omit<FoodEntry, 'id'>) => void;
   foods: FoodEntry[];
   onFoodSelect: (food: FoodEntry) => void;
+  initialData?: Omit<FoodEntry, 'id'>;
 }
 
-export const MealForm: React.FC<MealFormProps> = ({ onSubmit, foods, onFoodSelect }) => {
-  const [formData, setFormData] = useState<Omit<Meal, 'id'>>({
-    name: '',
-    carbs: 0,
-    protein: 0,
-    fat: 0,
-    notes: '',
-    timestamp: Math.floor(Date.now() / 1000),
-    synced: false,
-    foodItems: []
-  });
-  const [datetime, setDatetime] = useState(() => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+export const MealForm: React.FC<MealFormProps> = ({ onSubmit, foods, onFoodSelect, initialData }) => {
+  const [formData, setFormData] = useState<Omit<FoodEntry, 'id'>>({
+    name: initialData?.name || '',
+    carbs: initialData?.carbs || 0,
+    protein: initialData?.protein || 0,
+    fat: initialData?.fat || 0,
+    notes: initialData?.notes || ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dt = new Date(datetime);
-    const timestamp = Math.floor(dt.getTime() / 1000);
-    onSubmit({ ...formData, timestamp });
+    onSubmit(formData);
     setFormData({
       name: '',
       carbs: 0,
       protein: 0,
       fat: 0,
-      notes: '',
-      timestamp: Math.floor(Date.now() / 1000),
-      synced: false,
-      foodItems: []
-    });
-    setDatetime(() => {
-      const date = new Date();
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
+      notes: ''
     });
   };
 
@@ -131,43 +106,6 @@ export const MealForm: React.FC<MealFormProps> = ({ onSubmit, foods, onFoodSelec
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             rows={3}
           />
-        </div>
-
-        <div key="datetime-field">
-          <label htmlFor="datetime" className="block text-sm font-medium text-gray-700">
-            Meal Date & Time
-          </label>
-          <input
-            type="datetime-local"
-            id="datetime"
-            value={datetime}
-            onChange={e => setDatetime(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div key="food-items-section">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Food Items
-          </label>
-          <div key="food-items-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {foods.map((food) => (
-              <div
-                key={food.id}
-                className="border rounded p-4 cursor-pointer hover:bg-gray-50"
-                onClick={() => onFoodSelect(food)}
-              >
-                <h4 key={`name-${food.id}`} className="font-medium">{food.name}</h4>
-                <p key={`nutrition-${food.id}`} className="text-sm text-gray-600">
-                  Carbs: {food.carbs}g | Protein: {food.protein}g | Fat: {food.fat}g
-                </p>
-                {food.notes && (
-                  <p key={`notes-${food.id}`} className="text-sm text-gray-500 mt-2">{food.notes}</p>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
 
         <button

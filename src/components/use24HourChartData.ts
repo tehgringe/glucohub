@@ -46,7 +46,7 @@ export function use24HourChartData(dateStr: string = format(new Date(), 'yyyy-MM
   const [showSGV, setShowSGV] = useState(true);
   const [showAvg, setShowAvg] = useState(true);
   const [boundLow, setBoundLow] = useState(70);
-  const [boundHigh, setBoundHigh] = useState(180);
+  const [boundHigh, setBoundHigh] = useState(140);
 
   // Calculate average SGV
   const avgSgv = useMemo(() => {

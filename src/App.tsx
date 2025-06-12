@@ -14,13 +14,17 @@ import { Charts } from './components/Charts';
 import { Settings } from './components/Settings';
 import DataRecoveryToolkit from './components/DataRecoveryToolkit';
 import { Drawer, List, ListItem, ListItemText, Collapse, ListSubheader, Toolbar, Box, Divider } from '@mui/material';
-import { ExpandLess, ExpandMore, Timeline, Radar, Restaurant, Settings as MuiSettings, Science, BarChart, ListAlt, Build, Storage, BugReport, Assignment, Fastfood, MenuBook } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Timeline, Radar, Restaurant, Settings as MuiSettings, Science, BarChart, PieChart, ListAlt, Build, Storage, BugReport, Assignment, Fastfood, MenuBook } from '@mui/icons-material';
 import glucohubLogo from './../public/glucohub_logo_small.png';
+import { MacroPieExample } from './components/Charts/MacroPieExample';
+import { BubbleChart as MuiBubbleChart } from '@mui/icons-material';
+import { BubbleChart } from './components/Charts/BubbleChart';
+import { use24HourChartData } from './components/use24HourChartData';
 
 const drawerWidth = 260;
 
 // Helper for NavLink className
-const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'Mui-selected' : '');
+const navLinkClass = (isActive: boolean) => (isActive ? 'Mui-selected' : '');
 
 function SidebarNav() {
   const [open, setOpen] = useState({
@@ -56,13 +60,21 @@ function SidebarNav() {
         </ListItem>
         <Collapse in={open.charts} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={NavLink} to="/charts?view=linear" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts?view=linear" sx={{ pl: 4 }}>
               <Timeline sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="24-Hour Linear" />
             </ListItem>
-            <ListItem button component={NavLink} to="/charts?view=wheel" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts?view=wheel" sx={{ pl: 4 }}>
               <Radar sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Time Wheel" />
+            </ListItem>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts/macro-pie-example" sx={{ pl: 4 }}>
+              <PieChart sx={{ mr: 1 }} fontSize="small" />
+              <ListItemText primary="Macros" />
+            </ListItem>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/charts/macro-bg-bubble" sx={{ pl: 4 }}>
+              <MuiBubbleChart sx={{ mr: 1 }} fontSize="small" />
+              <ListItemText primary="Macro-BG Bubble" />
             </ListItem>
           </List>
         </Collapse>
@@ -74,15 +86,15 @@ function SidebarNav() {
         </ListItem>
         <Collapse in={open.bg} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={NavLink} to="/blood-glucose" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/blood-glucose" sx={{ pl: 4 }}>
               <ListAlt sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Overview" />
             </ListItem>
-            <ListItem button component={NavLink} to="/sensor-glucose" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/sensor-glucose" sx={{ pl: 4 }}>
               <Assignment sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Sensor Entry" />
             </ListItem>
-            <ListItem button component={NavLink} to="/upload" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/upload" sx={{ pl: 4 }}>
               <Storage sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Upload" />
             </ListItem>
@@ -96,11 +108,11 @@ function SidebarNav() {
         </ListItem>
         <Collapse in={open.meals} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={NavLink} to="/" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/" sx={{ pl: 4 }}>
               <Restaurant sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Meal Logger" />
             </ListItem>
-            <ListItem button component={NavLink} to="/meal-plans" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/meal-plans" sx={{ pl: 4 }}>
               <MenuBook sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Meal Plans" />
             </ListItem>
@@ -114,19 +126,19 @@ function SidebarNav() {
         </ListItem>
         <Collapse in={open.tools} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={NavLink} to="/api-v3-test" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/api-v3-test" sx={{ pl: 4 }}>
               <BugReport sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="API v3 Test" />
             </ListItem>
-            <ListItem button component={NavLink} to="/xdrip-db" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/xdrip-db" sx={{ pl: 4 }}>
               <Storage sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="xDrip DB" />
             </ListItem>
-            <ListItem button component={NavLink} to="/data-recovery" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/data-recovery" sx={{ pl: 4 }}>
               <Build sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Data Recovery Toolkit" />
             </ListItem>
-            <ListItem button component={NavLink} to="/data-fix" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/data-fix" sx={{ pl: 4 }}>
               <Build sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Data Fix" />
             </ListItem>
@@ -140,7 +152,7 @@ function SidebarNav() {
         </ListItem>
         <Collapse in={open.settings} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            <ListItem button component={NavLink} to="/config" sx={{ pl: 4 }} className={({ isActive }) => navLinkClass({ isActive })}>
+            <ListItem button component={props => <NavLink {...props} className={({ isActive }) => navLinkClass(isActive)} />} to="/config" sx={{ pl: 4 }}>
               <MuiSettings sx={{ mr: 1 }} fontSize="small" />
               <ListItemText primary="Configuration" />
             </ListItem>
@@ -163,6 +175,8 @@ function AppLayout() {
           <Route path="/sensor-glucose" element={<SensorGlucose />} />
           <Route path="/upload" element={<BloodGlucoseUpload />} />
           <Route path="/charts" element={<Charts />} />
+          <Route path="/charts/macro-pie-example" element={<MacroPieExample />} />
+          <Route path="/charts/macro-bg-bubble" element={<MacroBgBubbleExample />} />
           <Route path="/api-v3-test" element={<ApiV3Test />} />
           <Route path="/xdrip-db" element={<XdripDbAnalyzer />} />
           <Route path="/data-recovery" element={<DataRecoveryToolkit />} />
@@ -171,6 +185,28 @@ function AppLayout() {
         </Routes>
       </Box>
     </Box>
+  );
+}
+
+function MacroBgBubbleExample() {
+  const { meals, sgvData, loading, error } = use24HourChartData();
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  // Map sgvData to ensure required fields for BubbleChart
+  const mappedSgvData = sgvData.map(d => ({
+    ...d,
+    date: (d as any).date ?? (d as any).timestamp ?? 0,
+    value: (d as any).value ?? 0,
+    device: (d as any).device ?? 'CGM',
+    source: (d as any).source ?? 'unknown',
+    device_source: (d as any).device_source ?? 'unknown',
+    test: (d as any).test ?? false,
+  }));
+  return (
+    <div style={{ padding: 32 }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Macro-BG Bubble Chart</h2>
+      <BubbleChart meals={meals} sgvData={mappedSgvData} width={700} height={480} />
+    </div>
   );
 }
 
